@@ -20,3 +20,7 @@ pub mod optimize {
 pub mod interpolate {
     pub mod polynomial;
 }
+pub mod integrate {
+    pub mod integrator;
+}
+

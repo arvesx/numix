@@ -1,5 +1,5 @@
 pub fn newton() -> f64 {
-    return 5.0;
+    return 10.0;
 }
 
 pub fn bisection() -> f64 {
