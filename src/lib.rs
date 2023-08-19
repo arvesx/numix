@@ -12,3 +12,11 @@ mod tests {
         assert_eq!(result, 4);
     }
 }
+
+pub mod optimize {
+    pub mod root_finding;
+}
+
+pub mod interpolate {
+    pub mod polynomial;
+}
