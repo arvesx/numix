@@ -126,24 +126,3 @@ pub fn run(self)->f64{
 }
 }
 
-/* 
-
-self h = (self.b - a) / (2.0.powi(n as i32));
-
-r[0][0] = 0.5 * h * (func(a) + func(b));
-
-for i in 1..=n {
-    let mut sum = 0.0;
-    for k in 1..(2.pow(i as u32 - 1) + 1) {
-        sum += func(a + (2.0 * k as f64 - 1.0) * h);
-    }
-    r[i][0] = 0.5 * r[i - 1][0] + h * sum;
-
-    for j in 1..=i {
-        r[i][j] = r[i][j - 1] + (r[i][j - 1] - r[i - 1][j - 1]) / (4.0.powi(j as i32) - 1.0);
-    }
-}
-
-return r[n][n];
-
-*/
