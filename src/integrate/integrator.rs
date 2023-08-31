@@ -115,7 +115,7 @@ pub fn extend(mut self,size:u32)->Self{
 
 
 
-
+    
 }
 
 pub fn run(self)->f64{
@@ -124,5 +124,230 @@ pub fn run(self)->f64{
    
     
 }
+}
+
+pub struct GaussQuad<F>{
+
+
+
+    function:F,
+
+    lowerbound:f64,
+    upperbound:f64,
+
+    number_of_nodes:u32,
+    tolerance:f64,
+
+    integral_type:String,
+    singularities:Vec<f64>,
+    integration_method:String,
+
+    terminal_condition:String,
+    exit_condition:String
+
+}
+
+/*
+integral types: bounded non-singular
+                bounded singularites
+                infinite interval non-singular
+                infinite interval singularites
+                fourier transform
+                oscillatory integral
+                none aka trivial solution=0
+*/
+
+/*
+integral methods: Gauss
+
+*/
+
+/*
+terminal conditions: initial tolerance 
+                     numberofnodes
+                     demanded tolerance
+                     
+                     
+                    
+*/
+/*
+exitcondition:  noexit
+                tolerance satisfied
+                numberofnodes exhausted
+                iterations exhausted
+                divergence
+                field error
+                overflow error
+
+*/
+
+impl <F> GaussQuad<F> 
+where
+    F:Fn(f64)->f64
+{
+
+
+
+pub fn initialize(function:F,lowerbound:f64,upperbound:f64)->Self{
+
+    //categorizing integral
+
+    let integral_type:String;
+    let integration_method:String;
+    let singularities:Vec<f64>;
+    let terminal_condition:String="initial_tolerance";
+    
+    
+    if lowerbound==upperbound {
+
+        integral_type="none";
+
+        integration_method="gauss";
+        
+
+   
+    }
+
+    singularities=singularites(function, lowerbound, upperbound);
+    if singularities.is_empty() {
+
+        if upperbound.is_infinite() || lowerbound.is_infinite() {
+
+            integral_type="infinite interval";
+
+            integration_method="gauss";
+
+        } else{
+
+            integral_type="bounded";
+            
+            integration_method="gauss";
+
+        }
+    }
+    else{
+
+        if upperbound.is_infinite() || lowerbound.is_infinite() {
+
+            integral_type="infinite interval singularities";
+
+            integration_method="gauss";
+
+        }else{
+
+            integral_type="bounded singularities";
+            
+            integration_method="gauss";
+
+        }
+
+    }
+        
+
+    Self{
+
+        function:function,
+
+        lowerbound:lowerbound,
+        upperbound:upperbound,
+
+        number_of_nodes:100,
+        tolerance:10.0_f64.powf(-6.0),
+
+        integral_type:integral_type,
+        integration_method,
+        singularities:singularities,
+
+        terminal_condition:terminal_condition,
+        exit_condition:"no exit"
+
+
+
+    }
+
+
+    
+
+}
+
+pub fn change_tolerance(mut self, tol:f64)->Self{
+
+    self.tolerance=tol;
+    self.terminal_condition="demanded tolerance";
+    self
+        
+
+
+}
+pub fn oscillatory(mut self)->Self{
+
+
+    self.integral_type="oscilatory";
+    self
+}
+
+
+
+pub fn run(mut self)->f64{
+
+    let mut solution:f64=0.0;
+    self.exit_condition="tolerance satisfied";
+
+    return solution;
+
+
+
+}
+
+pub fn exit_condition(self)->String{
+    
+    self.exit_condition
+
+
+}
+
+}
+
+
+pub fn singularites<F>(function:F,lowerbound:f64,upperbound:f64)->Vec<f64>{
+    if lowerbound>=upperbound {
+
+        panic!("Irrational Bounds");
+    }
+
+    return Vec::new();
+
+
+}
+
+
+
+pub fn laplace_transform<F>(fucntion:F, tolerance:f64)->bool{
+
+    /*
+    norma4
+    bilateral
+     */
+    return true
+
+
+}
+
+pub fn fourier_transform<F>(function:F,transformtype:String, tolerance:f64)->bool{
+
+    /* 
+        normalised sine
+        non-normalised sine
+        normalised cosine
+        non-normalised cosine
+
+        normalised fft
+        non-normalised fft
+     */
+    return true
+
+
+
+
 }
 
