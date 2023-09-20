@@ -1,3 +1,25 @@
+use core::fmt;
+
+pub enum RootFindingError {
+    SignAgreementError,
+    NonConvergenceError,
+    ZeroDerivativeError,
+}
+
+impl fmt::Display for RootFindingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            RootFindingError::SignAgreementError => {
+                write!(f, "The signs of the initial numbers are the same.")
+            }
+            RootFindingError::NonConvergenceError => write!(f, "The algorithm failed to converge."),
+            RootFindingError::ZeroDerivativeError => {
+                write!(f, "Derivative became zero during computation.")
+            }
+        }
+    }
+}
+
 pub struct Bisection {
     f: fn(f64) -> f64,
     a: f64,
@@ -32,7 +54,7 @@ impl Bisection {
         self
     }
 
-    pub fn run(self) -> f64 {
+    pub fn run(self) -> Result<f64, RootFindingError> {
         let mut a = self.a;
         let mut b = self.b;
         let mut m;
@@ -42,16 +64,15 @@ impl Bisection {
         let mut f_m;
 
         if f_a == 0.0 {
-            return a;
+            return Ok(a);
         }
 
         if f_b == 0.0 {
-            return b;
+            return Ok(b);
         }
 
         if f_a.signum() == f_b.signum() {
-            // will need to return error
-            return 0.0;
+            return Err(RootFindingError::SignAgreementError);
         }
 
         for _i in 1..self.iterations {
@@ -64,12 +85,11 @@ impl Bisection {
             }
 
             if self.convergence_achieved(&a, &b, &m) {
-                return m;
+                return Ok(m);
             }
         }
 
-        // will need to return error
-        0.0
+        Err(RootFindingError::NonConvergenceError)
     }
 
     fn convergence_achieved(&self, a: &f64, b: &f64, m: &f64) -> bool {
@@ -125,7 +145,7 @@ impl Newton {
         self
     }
 
-    pub fn run(self) -> f64 {
+    pub fn run(self) -> Result<f64, RootFindingError> {
         let mut x = self.initial_guess;
 
         match &self.f_prime {
@@ -139,19 +159,32 @@ impl Newton {
                 for _i in 1..self.iterations {
                     // If root has been found, terminate
                     if f_x == 0.0 {
-                        return x;
+                        return Ok(x);
                     }
 
                     if f_prime_x == 0.0 {
-                        return x;
+                        return Err(RootFindingError::ZeroDerivativeError);
                     }
 
                     newton_step = f_x / f_prime_x;
+
+                    match &self.f_double_prime {
+                        // If f double prime is given, use Halley's Method
+                        Some(f_double_prime) => {
+                            let f_d_prime_x = f_double_prime(x);
+                            let adjustment = newton_step * f_d_prime_x / f_prime_x / 2.0;
+                            if adjustment.abs() < 1.0 {
+                                newton_step /= 1.0 - adjustment;
+                            }
+                        }
+                        None => {}
+                    }
+
                     x_n = x - newton_step;
 
                     // Check for convergence
                     if Self::convergence_achieved(&self, &x, &x_n) {
-                        return x;
+                        return Ok(x);
                     }
 
                     // Update variables
@@ -159,13 +192,11 @@ impl Newton {
                     f_x = (self.f)(x);
                     f_prime_x = f_prime(x);
                 }
-                return x;
+                Ok(x)
             }
             // In case f prime is not given, proceed with Secant Method
-            None => {}
+            None => Ok(x),
         }
-
-        x
     }
 
     fn convergence_achieved(&self, x: &f64, x_n: &f64) -> bool {
