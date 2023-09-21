@@ -5,11 +5,11 @@ mod bisection_tests {
     #[test]
     fn test_quadratic() {
         let root1 = Bisection::initialize(|x| x * x - 4.0, -3.0, -1.0)
-            .tolerance(1e-5)
+            .tol(1e-5)
             .run();
 
         let root2 = Bisection::initialize(|x| x * x - 4.0, 1.0, 3.0)
-            .tolerance(1e-5)
+            .tol(1e-5)
             .run();
 
         match root1 {
@@ -28,12 +28,12 @@ mod bisection_tests {
     #[test]
     fn test_quadratic_high_precision() {
         let root1 = Bisection::initialize(|x| x * x - 4.0, -3.0, -1.0)
-            .tolerance(1e-10)
-            .iterations(10000)
+            .tol(1e-10)
+            .iter(10000)
             .run();
         let root2 = Bisection::initialize(|x| x * x - 4.0, 1.0, 3.0)
-            .tolerance(1e-10)
-            .iterations(10000)
+            .tol(1e-10)
+            .iter(10000)
             .run();
 
         match root1 {
@@ -52,11 +52,9 @@ mod bisection_tests {
     #[test]
     fn test_sine() {
         let root1 = Bisection::initialize(|x| x.sin(), -1.0, 1.0)
-            .tolerance(1e-5)
+            .tol(1e-5)
             .run();
-        let root2 = Bisection::initialize(|x| x.sin(), 2.0, 4.0)
-            .tolerance(1e-5)
-            .run();
+        let root2 = Bisection::initialize(|x| x.sin(), 2.0, 4.0).tol(1e-5).run();
 
         match root1 {
             Ok(root1) => {
@@ -74,12 +72,12 @@ mod bisection_tests {
     #[test]
     fn test_sine_high_precision() {
         let root1 = Bisection::initialize(|x| x.sin(), -1.0, 1.0)
-            .tolerance(1e-10)
-            .iterations(10000)
+            .tol(1e-10)
+            .iter(10000)
             .run();
         let root2 = Bisection::initialize(|x| x.sin(), 2.0, 4.0)
-            .tolerance(1e-10)
-            .iterations(10000)
+            .tol(1e-10)
+            .iter(10000)
             .run();
 
         match root1 {
@@ -98,7 +96,7 @@ mod bisection_tests {
     #[test]
     fn test_exponential() {
         let root = Bisection::initialize(|x| x.exp() - 2.0, 0.0, 1.0)
-            .tolerance(1e-5)
+            .tol(1e-5)
             .run();
         match root {
             Ok(root) => {
@@ -110,8 +108,8 @@ mod bisection_tests {
     #[test]
     fn test_exponential_high_precision() {
         let root = Bisection::initialize(|x| x.exp() - 2.0, 0.0, 1.0)
-            .tolerance(1e-10)
-            .iterations(10000)
+            .tol(1e-10)
+            .iter(10000)
             .run();
 
         match root {
@@ -124,8 +122,8 @@ mod bisection_tests {
     #[test]
     fn test_complex_high_precision() {
         let root = Bisection::initialize(|x| x.powi(3) - 2.0 * x.powi(2) + x.sin() - 1.0, 0.0, 3.0)
-            .tolerance(1e-10)
-            .iterations(10000)
+            .tol(1e-10)
+            .iter(10000)
             .run();
 
         match root {
@@ -141,8 +139,8 @@ mod bisection_tests {
     #[test]
     fn test_super_complex_high_precision() {
         let root = Bisection::initialize(|x| (-x).exp() + x.powi(2) - x.cos() - 1.0, -2.0, 0.0)
-            .tolerance(1e-10)
-            .iterations(10000)
+            .tol(1e-10)
+            .iter(10000)
             .run();
 
         match root {
@@ -157,9 +155,7 @@ mod bisection_tests {
 
     #[test]
     fn test_linear() {
-        let root = Bisection::initialize(|x| x, -1.0, 1.0)
-            .tolerance(1e-5)
-            .run();
+        let root = Bisection::initialize(|x| x, -1.0, 1.0).tol(1e-5).run();
 
         match root {
             Ok(root) => {
@@ -171,8 +167,8 @@ mod bisection_tests {
     #[test]
     fn test_log_poly_high_precision() {
         let root = Bisection::initialize(|x| (x + 1.0).ln() - x.powi(2) + 2.0 * x, -0.5, 2.0)
-            .tolerance(1e-10)
-            .iterations(10000)
+            .tol(1e-10)
+            .iter(10000)
             .run();
 
         match root {

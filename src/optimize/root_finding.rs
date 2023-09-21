@@ -4,6 +4,7 @@ pub enum RootFindingError {
     SignAgreementError,
     NonConvergenceError,
     ZeroDerivativeError,
+    IdenticalInitialGuessesError,
 }
 
 impl fmt::Display for RootFindingError {
@@ -16,6 +17,9 @@ impl fmt::Display for RootFindingError {
             RootFindingError::ZeroDerivativeError => {
                 write!(f, "Derivative became zero during computation.")
             }
+            RootFindingError::IdenticalInitialGuessesError => {
+                write!(f, "Initial guesses x0 and x1 cannot be identical!")
+            }
         }
     }
 }
@@ -24,9 +28,9 @@ pub struct Bisection {
     f: fn(f64) -> f64,
     a: f64,
     b: f64,
-    tolerance: f64,
-    relative_tolerance: f64,
-    iterations: usize,
+    tol: f64,
+    rtol: f64,
+    iter: usize,
 }
 
 impl Bisection {
@@ -35,22 +39,22 @@ impl Bisection {
             f,
             a,
             b,
-            tolerance: 1e-8,
-            iterations: 100,
-            relative_tolerance: 0.0,
+            tol: 1e-8,
+            iter: 100,
+            rtol: 0.0,
         }
     }
-    pub fn tolerance(mut self, tolerance: f64) -> Self {
-        self.tolerance = tolerance;
+    pub fn tol(mut self, tol: f64) -> Self {
+        self.tol = tol;
         self
     }
-    pub fn relative_tolerance(mut self, relative_tolerance: f64) -> Self {
-        self.relative_tolerance = relative_tolerance;
+    pub fn rtol(mut self, rtol: f64) -> Self {
+        self.rtol = rtol;
         self
     }
 
-    pub fn iterations(mut self, iterations: usize) -> Self {
-        self.iterations = iterations;
+    pub fn iter(mut self, iter: usize) -> Self {
+        self.iter = iter;
         self
     }
 
@@ -75,7 +79,7 @@ impl Bisection {
             return Err(RootFindingError::SignAgreementError);
         }
 
-        for _i in 1..self.iterations {
+        for _i in 0..self.iter {
             m = a + (b - a) * 0.5;
             f_m = (self.f)(m);
             if f_m.signum() == f_a.signum() {
@@ -93,62 +97,69 @@ impl Bisection {
     }
 
     fn convergence_achieved(&self, a: &f64, b: &f64, m: &f64) -> bool {
-        (a - b).abs() < self.tolerance + self.relative_tolerance * m
+        (a - b).abs() < self.tol + self.rtol * m
     }
 }
 
 pub struct Newton {
     f: fn(f64) -> f64,
-    f_prime: Option<fn(f64) -> f64>,
-    f_double_prime: Option<fn(f64) -> f64>,
-    initial_guess: f64,
-    tolerance: f64,
-    relative_tolerance: f64,
-    iterations: usize,
+    fp: Option<fn(f64) -> f64>,
+    fdp: Option<fn(f64) -> f64>,
+    x0: f64,
+    x1: Option<f64>,
+    tol: f64,
+    rtol: f64,
+    iter: usize,
 }
 
 impl Newton {
-    pub fn initialize(f: fn(f64) -> f64, initial_guess: f64) -> Self {
+    pub fn initialize(f: fn(f64) -> f64, x0: f64) -> Self {
         Self {
             f,
-            f_prime: None,
-            f_double_prime: None,
-            initial_guess,
-            tolerance: 1e-8,
-            iterations: 100,
-            relative_tolerance: 0.0,
+            fp: None,
+            fdp: None,
+            x0,
+            x1: None,
+            tol: 1e-8,
+            iter: 100,
+            rtol: 0.0,
         }
     }
 
-    pub fn f_prime(mut self, f_prime: fn(f64) -> f64) -> Self {
-        self.f_prime = Some(f_prime);
+    pub fn x1(mut self, x1: f64) -> Self {
+        self.x1 = Some(x1);
         self
     }
 
-    pub fn f_double_prime(mut self, f_double_prime: fn(f64) -> f64) -> Self {
-        self.f_double_prime = Some(f_double_prime);
+    pub fn fp(mut self, fp: fn(f64) -> f64) -> Self {
+        self.fp = Some(fp);
         self
     }
 
-    pub fn tolerance(mut self, tolerance: f64) -> Self {
-        self.tolerance = tolerance;
+    pub fn fdp(mut self, fdp: fn(f64) -> f64) -> Self {
+        self.fdp = Some(fdp);
         self
     }
 
-    pub fn relative_tolerance(mut self, relative_tolerance: f64) -> Self {
-        self.relative_tolerance = relative_tolerance;
+    pub fn tol(mut self, tol: f64) -> Self {
+        self.tol = tol;
         self
     }
 
-    pub fn iterations(mut self, iterations: usize) -> Self {
-        self.iterations = iterations;
+    pub fn rtol(mut self, rtol: f64) -> Self {
+        self.rtol = rtol;
+        self
+    }
+
+    pub fn iter(mut self, iter: usize) -> Self {
+        self.iter = iter;
         self
     }
 
     pub fn run(self) -> Result<f64, RootFindingError> {
-        let mut x = self.initial_guess;
+        let mut x = self.x0;
 
-        match &self.f_prime {
+        match &self.fp {
             // If f prime is given, proceed with the Newton-Raphson Method
             Some(f_prime) => {
                 let mut x_n;
@@ -156,7 +167,7 @@ impl Newton {
                 let mut f_prime_x = f_prime(x);
                 let mut newton_step;
 
-                for _i in 1..self.iterations {
+                for _i in 0..self.iter {
                     // If root has been found, terminate
                     if f_x == 0.0 {
                         return Ok(x);
@@ -168,7 +179,7 @@ impl Newton {
 
                     newton_step = f_x / f_prime_x;
 
-                    match &self.f_double_prime {
+                    match &self.fdp {
                         // If f double prime is given, use Halley's Method
                         Some(f_double_prime) => {
                             let f_d_prime_x = f_double_prime(x);
@@ -195,18 +206,66 @@ impl Newton {
                 Ok(x)
             }
             // In case f prime is not given, proceed with Secant Method
-            None => Ok(x),
+            None => {
+                let mut p0 = self.x0;
+                let mut p1;
+
+                match self.x1 {
+                    Some(x1) => {
+                        if x1 == self.x0 {
+                            return Err(RootFindingError::IdenticalInitialGuessesError);
+                        }
+                        p1 = x1;
+                    }
+                    None => {
+                        let delta = 1e-4;
+                        p1 = p0 * (1.0 + delta);
+                        p1 += if p1 >= 0.0 { delta } else { -delta }
+                    }
+                }
+
+                let mut f_p0 = (self.f)(p0);
+                let mut f_p1 = (self.f)(p1);
+                if f_p1.abs() < f_p0.abs() {
+                    std::mem::swap(&mut p0, &mut p1);
+                    std::mem::swap(&mut f_p0, &mut f_p1);
+                }
+                let mut p = p0;
+                for _i in 0..self.iter {
+                    // If function values are not the same, we have not converged yet
+                    if f_p0 != f_p1 {
+                        if f_p1.abs() > f_p0.abs() {
+                            p = (-f_p0 / f_p1 * p1 + p0) / (1.0 - f_p0 / f_p1);
+                        } else {
+                            p = (-f_p1 / f_p0 * p0 + p1) / (1.0 - f_p1 / f_p0);
+                        }
+                    } else {
+                        // If function values are the same, Secant cannot continue because denominator is zero
+                        return Err(RootFindingError::NonConvergenceError);
+                    }
+                    // Check for convergence
+                    if self.convergence_achieved(&p, &p1) {
+                        return Ok(p);
+                    }
+                    p0 = p1;
+                    f_p0 = f_p1;
+                    p1 = p;
+                    f_p1 = (self.f)(p1)
+                }
+
+                Ok(p)
+            }
         }
     }
 
     fn convergence_achieved(&self, x: &f64, x_n: &f64) -> bool {
         // If |x - x_n| < tolerance, convergence achieved
-        if (x - x_n).abs() < self.tolerance {
+        if (x - x_n).abs() < self.tol {
             return true;
         }
 
         // If |x - x_n| / |max(x, x_n, 1)| < relative_tolerance, convergence achieved
-        if (x - x_n).abs() / x.abs().max(x_n.abs()).max(1.0) < self.relative_tolerance {
+        if (x - x_n).abs() / x.abs().max(x_n.abs()).max(1.0) < self.rtol {
             return true;
         }
 
