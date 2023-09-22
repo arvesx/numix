@@ -14,13 +14,15 @@ mod bisection_tests {
 
         match root1 {
             Ok(root1) => {
-                assert!((root1 + 2.0).abs() < 1e-5)
+                println!("{}", root1);
+                assert!((root1.est_x + 2.0).abs() < 1e-5)
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
         match root2 {
             Ok(root2) => {
-                assert!((root2 - 2.0).abs() < 1e-5)
+                println!("{}", root2);
+                assert!((root2.est_x - 2.0).abs() < 1e-5)
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         };
@@ -38,13 +40,13 @@ mod bisection_tests {
 
         match root1 {
             Ok(root1) => {
-                assert!((root1 + 2.0).abs() < 1e-10);
+                assert!((root1.est_x + 2.0).abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
         match root2 {
             Ok(root2) => {
-                assert!((root2 - 2.0).abs() < 1e-10);
+                assert!((root2.est_x - 2.0).abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         };
@@ -58,13 +60,13 @@ mod bisection_tests {
 
         match root1 {
             Ok(root1) => {
-                assert!(root1.abs() < 1e-5);
+                assert!(root1.est_x.abs() < 1e-5);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
         match root2 {
             Ok(root2) => {
-                assert!((root2 - std::f64::consts::PI).abs() < 1e-5);
+                assert!((root2.est_x - std::f64::consts::PI).abs() < 1e-5);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         };
@@ -82,13 +84,13 @@ mod bisection_tests {
 
         match root1 {
             Ok(root1) => {
-                assert!(root1.abs() < 1e-10);
+                assert!(root1.est_x.abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
         match root2 {
             Ok(root2) => {
-                assert!((root2 - std::f64::consts::PI).abs() < 1e-10);
+                assert!((root2.est_x - std::f64::consts::PI).abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         };
@@ -100,7 +102,7 @@ mod bisection_tests {
             .run();
         match root {
             Ok(root) => {
-                assert!((root - 2.0f64.ln()).abs() < 1e-5);
+                assert!((root.est_x - 2.0f64.ln()).abs() < 1e-5);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
@@ -114,7 +116,7 @@ mod bisection_tests {
 
         match root {
             Ok(root) => {
-                assert!((root - f64::ln(2.0)).abs() < 1e-10);
+                assert!((root.est_x - f64::ln(2.0)).abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
@@ -129,7 +131,7 @@ mod bisection_tests {
         match root {
             Ok(root) => {
                 // Validate the root within the tolerance
-                let f_root = root.powi(3) - 2.0 * root.powi(2) + root.sin() - 1.0;
+                let f_root = root.est_x.powi(3) - 2.0 * root.est_x.powi(2) + root.est_x.sin() - 1.0;
                 assert!(f_root.abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
@@ -146,7 +148,7 @@ mod bisection_tests {
         match root {
             Ok(root) => {
                 // Validate the root within the tolerance
-                let f_root = (-root).exp() + root.powi(2) - root.cos() - 1.0;
+                let f_root = (-root.est_x).exp() + root.est_x.powi(2) - root.est_x.cos() - 1.0;
                 assert!(f_root.abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
@@ -159,7 +161,7 @@ mod bisection_tests {
 
         match root {
             Ok(root) => {
-                assert!(root.abs() < 1e-5);
+                assert!(root.est_x.abs() < 1e-5);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
@@ -174,7 +176,7 @@ mod bisection_tests {
         match root {
             Ok(root) => {
                 // Validate the root within the tolerance
-                let f_root = (root + 1.0).ln() - root.powi(2) + 2.0 * root;
+                let f_root = (root.est_x + 1.0).ln() - root.est_x.powi(2) + 2.0 * root.est_x;
                 assert!(f_root.abs() < 1e-8);
             }
             Err(e) => panic!("Test failed due to error: {}", e),

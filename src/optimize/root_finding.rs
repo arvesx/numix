@@ -1,24 +1,50 @@
 use core::fmt;
 
+static SUCCESS_MAX_ITER: &str = "Warning! Maximum number of iterations reached.\n";
+static SUCCESS_CONVERGENCE: &str = "Achieved convergence with the specified tolerance.\n";
+
+pub struct AlgoMetrics {
+    pub msg: String,
+    pub funcalls: u32,
+    pub iter: usize,
+    pub est_x: f64,
+}
+
+impl fmt::Display for AlgoMetrics {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "{}funcalls={}, iter={}, est_x={}",
+            self.msg, self.funcalls, self.iter, self.est_x
+        )
+    }
+}
+
 pub enum RootFindingError {
-    SignAgreementError,
-    NonConvergenceError,
-    ZeroDerivativeError,
-    IdenticalInitialGuessesError,
+    SignAgreementError(AlgoMetrics),
+    NonConvergenceError(AlgoMetrics),
+    ZeroDerivativeError(AlgoMetrics),
+    IdenticalInitialGuessesError(AlgoMetrics),
 }
 
 impl fmt::Display for RootFindingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            RootFindingError::SignAgreementError => {
+        match self {
+            RootFindingError::SignAgreementError(_algo_metrics) => {
                 write!(f, "The signs of the initial numbers are the same.")
             }
-            RootFindingError::NonConvergenceError => write!(f, "The algorithm failed to converge."),
-            RootFindingError::ZeroDerivativeError => {
-                write!(f, "Derivative became zero during computation.")
+            RootFindingError::NonConvergenceError(algo_metrics) => {
+                write!(f, "The algorithm failed to converge.\n{}", algo_metrics)
             }
-            RootFindingError::IdenticalInitialGuessesError => {
-                write!(f, "Initial guesses x0 and x1 cannot be identical!")
+            RootFindingError::ZeroDerivativeError(algo_metrics) => {
+                write!(
+                    f,
+                    "Derivative became zero during computation.\n{}",
+                    algo_metrics
+                )
+            }
+            RootFindingError::IdenticalInitialGuessesError(_algo_metrics) => {
+                write!(f, "Initial guesses x0 and x1 cannot be identical.")
             }
         }
     }
@@ -58,30 +84,44 @@ impl Bisection {
         self
     }
 
-    pub fn run(self) -> Result<f64, RootFindingError> {
+    pub fn run(self) -> Result<AlgoMetrics, RootFindingError> {
+        let mut algo_metrics = AlgoMetrics {
+            est_x: 0.0,
+            msg: String::from(""),
+            funcalls: 0,
+            iter: 0,
+        };
+
         let mut a = self.a;
         let mut b = self.b;
         let mut m;
 
         let f_a = (self.f)(a);
+        algo_metrics.funcalls += 1;
         let f_b = (self.f)(b);
+        algo_metrics.funcalls += 1;
         let mut f_m;
 
         if f_a == 0.0 {
-            return Ok(a);
+            algo_metrics.est_x = a;
+            algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+            return Ok(algo_metrics);
         }
 
         if f_b == 0.0 {
-            return Ok(b);
+            algo_metrics.est_x = b;
+            algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+            return Ok(algo_metrics);
         }
 
         if f_a.signum() == f_b.signum() {
-            return Err(RootFindingError::SignAgreementError);
+            return Err(RootFindingError::SignAgreementError(algo_metrics));
         }
 
-        for _i in 0..self.iter {
+        for i in 0..self.iter {
             m = a + (b - a) * 0.5;
             f_m = (self.f)(m);
+            algo_metrics.funcalls += 1;
             if f_m.signum() == f_a.signum() {
                 a = m;
             } else {
@@ -89,11 +129,14 @@ impl Bisection {
             }
 
             if self.convergence_achieved(&a, &b, &m) {
-                return Ok(m);
+                algo_metrics.iter = i;
+                algo_metrics.est_x = m;
+                algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+                return Ok(algo_metrics);
             }
         }
-
-        Err(RootFindingError::NonConvergenceError)
+        algo_metrics.iter = self.iter;
+        Err(RootFindingError::NonConvergenceError(algo_metrics))
     }
 
     fn convergence_achieved(&self, a: &f64, b: &f64, m: &f64) -> bool {
@@ -156,7 +199,13 @@ impl Newton {
         self
     }
 
-    pub fn run(self) -> Result<f64, RootFindingError> {
+    pub fn run(self) -> Result<AlgoMetrics, RootFindingError> {
+        let mut algo_metrics = AlgoMetrics {
+            est_x: 0.0,
+            msg: String::from(""),
+            funcalls: 0,
+            iter: 0,
+        };
         let mut x = self.x0;
 
         match &self.fp {
@@ -164,17 +213,24 @@ impl Newton {
             Some(f_prime) => {
                 let mut x_n;
                 let mut f_x = (self.f)(x);
+                algo_metrics.funcalls += 1;
                 let mut f_prime_x = f_prime(x);
+                algo_metrics.funcalls += 1;
                 let mut newton_step;
 
-                for _i in 0..self.iter {
+                for i in 0..self.iter {
                     // If root has been found, terminate
                     if f_x == 0.0 {
-                        return Ok(x);
+                        algo_metrics.iter = i;
+                        algo_metrics.est_x = x;
+                        algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+                        return Ok(algo_metrics);
                     }
 
                     if f_prime_x == 0.0 {
-                        return Err(RootFindingError::ZeroDerivativeError);
+                        algo_metrics.iter = i;
+                        algo_metrics.est_x = x;
+                        return Err(RootFindingError::ZeroDerivativeError(algo_metrics));
                     }
 
                     newton_step = f_x / f_prime_x;
@@ -183,6 +239,7 @@ impl Newton {
                         // If f double prime is given, use Halley's Method
                         Some(f_double_prime) => {
                             let f_d_prime_x = f_double_prime(x);
+                            algo_metrics.funcalls += 1;
                             let adjustment = newton_step * f_d_prime_x / f_prime_x / 2.0;
                             if adjustment.abs() < 1.0 {
                                 newton_step /= 1.0 - adjustment;
@@ -195,15 +252,23 @@ impl Newton {
 
                     // Check for convergence
                     if Self::convergence_achieved(&self, &x, &x_n) {
-                        return Ok(x);
+                        algo_metrics.est_x = x;
+                        algo_metrics.iter = i;
+                        algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+                        return Ok(algo_metrics);
                     }
 
                     // Update variables
                     x = x_n;
                     f_x = (self.f)(x);
+                    algo_metrics.funcalls += 1;
                     f_prime_x = f_prime(x);
+                    algo_metrics.funcalls += 1;
                 }
-                Ok(x)
+                algo_metrics.est_x = x;
+                algo_metrics.iter = self.iter;
+                algo_metrics.msg.push_str(SUCCESS_MAX_ITER);
+                Ok(algo_metrics)
             }
             // In case f prime is not given, proceed with Secant Method
             None => {
@@ -213,7 +278,9 @@ impl Newton {
                 match self.x1 {
                     Some(x1) => {
                         if x1 == self.x0 {
-                            return Err(RootFindingError::IdenticalInitialGuessesError);
+                            return Err(RootFindingError::IdenticalInitialGuessesError(
+                                algo_metrics,
+                            ));
                         }
                         p1 = x1;
                     }
@@ -225,13 +292,15 @@ impl Newton {
                 }
 
                 let mut f_p0 = (self.f)(p0);
+                algo_metrics.funcalls += 1;
                 let mut f_p1 = (self.f)(p1);
+                algo_metrics.funcalls += 1;
                 if f_p1.abs() < f_p0.abs() {
                     std::mem::swap(&mut p0, &mut p1);
                     std::mem::swap(&mut f_p0, &mut f_p1);
                 }
                 let mut p = p0;
-                for _i in 0..self.iter {
+                for i in 0..self.iter {
                     // If function values are not the same, we have not converged yet
                     if f_p0 != f_p1 {
                         if f_p1.abs() > f_p0.abs() {
@@ -241,19 +310,27 @@ impl Newton {
                         }
                     } else {
                         // If function values are the same, Secant cannot continue because denominator is zero
-                        return Err(RootFindingError::NonConvergenceError);
+                        algo_metrics.msg.push_str("Cannot apply secant step because denominator became zero during computation.");
+                        return Err(RootFindingError::NonConvergenceError(algo_metrics));
                     }
                     // Check for convergence
                     if self.convergence_achieved(&p, &p1) {
-                        return Ok(p);
+                        algo_metrics.iter = i;
+                        algo_metrics.est_x = p;
+                        algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+                        return Ok(algo_metrics);
                     }
                     p0 = p1;
                     f_p0 = f_p1;
                     p1 = p;
-                    f_p1 = (self.f)(p1)
+                    f_p1 = (self.f)(p1);
+                    algo_metrics.funcalls += 1;
                 }
 
-                Ok(p)
+                algo_metrics.est_x = p;
+                algo_metrics.msg.push_str(SUCCESS_MAX_ITER);
+                algo_metrics.iter = self.iter;
+                Ok(algo_metrics)
             }
         }
     }

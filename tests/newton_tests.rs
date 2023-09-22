@@ -11,7 +11,7 @@ pub mod newton_tests {
             .run();
 
         // Test case 2: Root near PI for sin(x)
-        let root2 = Newton::initialize(|x| x.sin(), std::f64::consts::PI)
+        let root2 = Newton::initialize(|x| x.sin(), 4.0)
             .fp(|x| x.cos())
             .fdp(|x| -x.sin())
             .tol(1e-10)
@@ -20,7 +20,8 @@ pub mod newton_tests {
         // Validate root1
         match root1 {
             Ok(root1) => {
-                assert!(root1.abs() < 1e-10);
+                println!("{}", root1);
+                assert!(root1.est_x.abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
@@ -28,7 +29,8 @@ pub mod newton_tests {
         // Validate root2
         match root2 {
             Ok(root2) => {
-                assert!((root2 - std::f64::consts::PI).abs() < 1e-10);
+                println!("{}", root2);
+                assert!((root2.est_x - std::f64::consts::PI).abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
@@ -51,7 +53,7 @@ pub mod newton_tests {
         // Validate root1
         match root1 {
             Ok(root1) => {
-                assert!((root1 - 1.0).abs() < 1e-10);
+                assert!((root1.est_x - 1.0).abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
@@ -59,7 +61,7 @@ pub mod newton_tests {
         // Validate root2
         match root2 {
             Ok(root2) => {
-                assert!((root2 - 3.0).abs() < 1e-10);
+                assert!((root2.est_x - 3.0).abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
@@ -86,7 +88,7 @@ pub mod newton_tests {
         // Validate root1
         match root1 {
             Ok(root1) => {
-                assert!((root1 - ln_2).abs() < 1e-10);
+                assert!((root1.est_x - ln_2).abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
@@ -94,7 +96,7 @@ pub mod newton_tests {
         // Validate root2
         match root2 {
             Ok(root2) => {
-                assert!((root2 - ln_2).abs() < 1e-10);
+                assert!((root2.est_x - ln_2).abs() < 1e-10);
             }
             Err(e) => panic!("Test failed due to error: {}", e),
         }
