@@ -8,7 +8,7 @@ static SUCCESS_CONVERGENCE: &str = "Achieved convergence with the specified tole
 
 pub struct AlgoMetrics {
     pub msg: String,
-    pub funcalls: u32,
+    pub func_evals: u32,
     pub iter: usize,
     pub est_x: f64,
 }
@@ -17,8 +17,8 @@ impl fmt::Display for AlgoMetrics {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
-            "{}funcalls={}, iter={}, est_x={}",
-            self.msg, self.funcalls, self.iter, self.est_x
+            "{}func_evals={}, iter={}, est_x={}",
+            self.msg, self.func_evals, self.iter, self.est_x
         )
     }
 }
@@ -99,7 +99,7 @@ impl Bisection {
         let mut algo_metrics = AlgoMetrics {
             est_x: 0.0,
             msg: String::from(""),
-            funcalls: 0,
+            func_evals: 0,
             iter: 0,
         };
 
@@ -122,9 +122,9 @@ impl Bisection {
         let mut m;
 
         let f_a = (self.f)(a);
-        algo_metrics.funcalls += 1;
+        algo_metrics.func_evals += 1;
         let f_b = (self.f)(b);
-        algo_metrics.funcalls += 1;
+        algo_metrics.func_evals += 1;
         let mut f_m;
 
         if f_a == 0.0 {
@@ -146,7 +146,7 @@ impl Bisection {
         for i in 0..self.iter {
             m = a + (b - a) * 0.5;
             f_m = (self.f)(m);
-            algo_metrics.funcalls += 1;
+            algo_metrics.func_evals += 1;
             if f_m.signum() == f_a.signum() {
                 a = m;
             } else {
@@ -228,7 +228,7 @@ impl Newton {
         let mut algo_metrics = AlgoMetrics {
             est_x: 0.0,
             msg: String::from(""),
-            funcalls: 0,
+            func_evals: 0,
             iter: 0,
         };
 
@@ -253,9 +253,9 @@ impl Newton {
             Some(f_prime) => {
                 let mut x_n;
                 let mut f_x = (self.f)(x);
-                algo_metrics.funcalls += 1;
+                algo_metrics.func_evals += 1;
                 let mut f_prime_x = f_prime(x);
-                algo_metrics.funcalls += 1;
+                algo_metrics.func_evals += 1;
                 let mut newton_step;
 
                 for i in 0..self.iter {
@@ -279,7 +279,7 @@ impl Newton {
                         // If f double prime is given, use Halley's Method
                         Some(f_double_prime) => {
                             let f_d_prime_x = f_double_prime(x);
-                            algo_metrics.funcalls += 1;
+                            algo_metrics.func_evals += 1;
                             let adjustment = newton_step * f_d_prime_x / f_prime_x / 2.0;
                             if adjustment.abs() < 1.0 {
                                 newton_step /= 1.0 - adjustment;
@@ -291,7 +291,7 @@ impl Newton {
                     x_n = x - newton_step;
 
                     // Check for convergence
-                    if Self::convergence_achieved(&self, &x, &x_n) {
+                    if precision_equals(&x, &x_n, &self.tol, &self.rtol) {
                         algo_metrics.est_x = x;
                         algo_metrics.iter = i;
                         algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
@@ -301,9 +301,9 @@ impl Newton {
                     // Update variables
                     x = x_n;
                     f_x = (self.f)(x);
-                    algo_metrics.funcalls += 1;
+                    algo_metrics.func_evals += 1;
                     f_prime_x = f_prime(x);
-                    algo_metrics.funcalls += 1;
+                    algo_metrics.func_evals += 1;
                 }
                 algo_metrics.est_x = x;
                 algo_metrics.iter = self.iter;
@@ -330,9 +330,9 @@ impl Newton {
                 }
 
                 let mut f_p0 = (self.f)(p0);
-                algo_metrics.funcalls += 1;
+                algo_metrics.func_evals += 1;
                 let mut f_p1 = (self.f)(p1);
-                algo_metrics.funcalls += 1;
+                algo_metrics.func_evals += 1;
                 if f_p1.abs() < f_p0.abs() {
                     std::mem::swap(&mut p0, &mut p1);
                     std::mem::swap(&mut f_p0, &mut f_p1);
@@ -352,7 +352,7 @@ impl Newton {
                         return Err(RootFindingError::NonConvergenceError(algo_metrics));
                     }
                     // Check for convergence
-                    if self.convergence_achieved(&p, &p1) {
+                    if precision_equals(&p, &p1, &self.tol, &self.rtol) {
                         algo_metrics.iter = i;
                         algo_metrics.est_x = p;
                         algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
@@ -362,7 +362,7 @@ impl Newton {
                     f_p0 = f_p1;
                     p1 = p;
                     f_p1 = (self.f)(p1);
-                    algo_metrics.funcalls += 1;
+                    algo_metrics.func_evals += 1;
                 }
 
                 algo_metrics.est_x = p;
@@ -372,22 +372,11 @@ impl Newton {
             }
         }
     }
-
-    fn convergence_achieved(&self, x: &f64, x_n: &f64) -> bool {
-        // If |x - x_n| < tolerance, convergence achieved
-        if (x - x_n).abs() < self.tol {
-            return true;
-        }
-
-        // If |x - x_n| / |max(x, x_n, 1)| < relative_tolerance, convergence achieved
-        if (x - x_n).abs() / x.abs().max(x_n.abs()).max(1.0) < self.rtol {
-            return true;
-        }
-
-        false
-    }
 }
 
+pub fn precision_equals(x1: &f64, x2: &f64, tol: &f64, rtol: &f64) -> bool {
+    (x1 - x2).abs() <= tol + rtol * x2.abs()
+}
 pub struct Brent {
     f: fn(f64) -> f64,
     a: f64,
@@ -422,7 +411,126 @@ impl Brent {
         self
     }
 
-    pub fn run() -> f64 {
+    pub fn run(self) -> f64 {
+        let mut algo_metrics = AlgoMetrics {
+            est_x: 0.0,
+            msg: String::from(""),
+            func_evals: 0,
+            iter: 0,
+        };
+
+        if self.tol <= 0.0 {
+            algo_metrics
+                .msg
+                .push_str("Value of tol is either negative or zero.");
+            // return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+        }
+
+        if self.rtol < DEFAULT_RTOL {
+            algo_metrics
+                .msg
+                .push_str("Value of rtol is either negative or extremely small.");
+            // return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+        }
+
+        let mut a = self.a;
+        let mut b = self.b;
+        let mut f_a = (self.f)(a);
+        algo_metrics.func_evals += 1;
+        let mut f_b = (self.f)(b);
+        algo_metrics.func_evals += 1;
+        let mut last_bracket = a;
+        let mut f_last_bracket = f_a;
+        let mut last_interval_size = b - a;
+        let mut prev_interval_size = last_interval_size;
+        let mut effective_tol;
+        let mut m;
+        let mut s;
+        let mut p;
+        let mut q;
+        let mut r;
+
+        for _i in 0..self.iter {
+            // If the absolute value of f_last_bracket is less than the absolute value of f_b, swap a, b,
+            // and last_bracket as well as their corresponding function values. This ensures that b is
+            // always the best approximation
+            if f_last_bracket.abs() < f_b.abs() {
+                a = b;
+                b = last_bracket;
+                last_bracket = a;
+                f_a = f_b;
+                f_b = f_last_bracket;
+                f_last_bracket = f_a
+            }
+
+            // Calculate effective tolerance and midpoint
+            effective_tol = self.tol + 2.0 * self.rtol * b.abs();
+            m = 0.5 * (last_bracket - b);
+
+            // If the absolute value of the midpoint is less than or equal to the effective tolerance,
+            // or if f_b is zero, then a root has been found. Return b.
+            if m.abs() <= effective_tol || precision_equals(&f_b, &0.0, &self.tol, &self.rtol) {
+                return b;
+            }
+
+            if prev_interval_size.abs() < effective_tol || f_a.abs() < f_b.abs() {
+                // In that case we use bisection
+                last_interval_size = m;
+                prev_interval_size = last_interval_size;
+            } else {
+                // Else, decide which interpolation method to use
+                s = f_b / f_a;
+                if a == last_bracket {
+                    // Do linear interpolation
+                    p = 2.0 * m * s;
+                    q = 1.0 - s;
+                } else {
+                    // Do inverse quadratic interpolation
+                    q = f_a / f_last_bracket;
+                    r = f_b / f_last_bracket;
+                    p = s * (2.0 * m * q * (q - r) - (b - a) * (r - 1.0));
+                    q = (q - 1.0) * (r - 1.0) * (s - 1.0);
+                }
+
+                if p > 0.0 {
+                    q = -q;
+                } else {
+                    p = -p;
+                }
+
+                s = prev_interval_size;
+                prev_interval_size = last_interval_size;
+                // We evaluate whether the interpolation is likely to be beneficial. If the calculated p is
+                // too large compared to the midpoint and the effective tolerance, or if it's larger than half
+                // of the previous interval size multiplied by q, we decide that interpolation isn't helping us much.
+                if (p >= 1.5 * m * q - (effective_tol * q).abs()) || (p >= (0.5 * s * q).abs()) {
+                    last_interval_size = m;
+                    prev_interval_size = last_interval_size;
+                } else {
+                    last_interval_size = p / q;
+                }
+            }
+            a = b;
+            f_a = f_b;
+            if last_interval_size.abs() > effective_tol {
+                b += last_interval_size;
+            } else if m > 0.0 {
+                b += effective_tol;
+            } else {
+                b -= effective_tol;
+            }
+
+            f_b = (self.f)(b);
+            algo_metrics.func_evals += 1;
+
+            if (f_b > 0.0 && f_last_bracket > 0.0) || (f_b <= 0.0 && f_last_bracket <= 0.0) {
+                last_bracket = a;
+                f_last_bracket = f_a;
+                last_interval_size = b - a;
+                prev_interval_size = last_interval_size;
+            }
+        }
+
         0.0
     }
 }
