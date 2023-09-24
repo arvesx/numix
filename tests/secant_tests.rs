@@ -156,4 +156,19 @@ pub mod newton_tests {
             Err(e) => panic!("Test failed due to error: {}", e),
         }
     }
+    #[test]
+    fn test9() {
+        let result = Newton::initialize(|x| x.sin() * x.sin() / x, 8.0)
+            .tol(1e-10)
+            .run();
+
+        // Validate result
+        match result {
+            Ok(algo_metrics) => {
+                println!("{}", algo_metrics);
+                assert!(algo_metrics.est_x.abs() - 12.5663706145 < 1e-10);
+            }
+            Err(e) => panic!("Test failed due to error: {}", e),
+        }
+    }
 }

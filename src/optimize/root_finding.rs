@@ -1,5 +1,8 @@
 use core::fmt;
 
+static MACH_EPS: f64 = std::f64::EPSILON;
+static DEFAULT_RTOL: f64 = 4.0 * MACH_EPS;
+
 static SUCCESS_MAX_ITER: &str = "Warning! Maximum number of iterations reached.\n";
 static SUCCESS_CONVERGENCE: &str = "Achieved convergence with the specified tolerance.\n";
 
@@ -21,16 +24,17 @@ impl fmt::Display for AlgoMetrics {
 }
 
 pub enum RootFindingError {
-    SignAgreementError(AlgoMetrics),
+    SignAgreementError,
     NonConvergenceError(AlgoMetrics),
     ZeroDerivativeError(AlgoMetrics),
-    IdenticalInitialGuessesError(AlgoMetrics),
+    IdenticalInitialGuessesError,
+    UnacceptableToleranceError(AlgoMetrics),
 }
 
 impl fmt::Display for RootFindingError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            RootFindingError::SignAgreementError(_algo_metrics) => {
+            RootFindingError::SignAgreementError => {
                 write!(f, "The signs of the initial numbers are the same.")
             }
             RootFindingError::NonConvergenceError(algo_metrics) => {
@@ -43,8 +47,15 @@ impl fmt::Display for RootFindingError {
                     algo_metrics
                 )
             }
-            RootFindingError::IdenticalInitialGuessesError(_algo_metrics) => {
+            RootFindingError::IdenticalInitialGuessesError => {
                 write!(f, "Initial guesses x0 and x1 cannot be identical.")
+            }
+            RootFindingError::UnacceptableToleranceError(algo_metrics) => {
+                write!(
+                    f,
+                    "Too small tolerance value was given.\n{}",
+                    algo_metrics.msg
+                )
             }
         }
     }
@@ -67,7 +78,7 @@ impl Bisection {
             b,
             tol: 1e-8,
             iter: 100,
-            rtol: 0.0,
+            rtol: DEFAULT_RTOL,
         }
     }
     pub fn tol(mut self, tol: f64) -> Self {
@@ -92,6 +103,20 @@ impl Bisection {
             iter: 0,
         };
 
+        if self.tol <= 0.0 {
+            algo_metrics
+                .msg
+                .push_str("Value of tol is either negative or zero.");
+            return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+        }
+
+        if self.rtol < DEFAULT_RTOL {
+            algo_metrics
+                .msg
+                .push_str("Value of rtol is either negative or extremely small.");
+            return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+        }
+
         let mut a = self.a;
         let mut b = self.b;
         let mut m;
@@ -115,7 +140,7 @@ impl Bisection {
         }
 
         if f_a.signum() == f_b.signum() {
-            return Err(RootFindingError::SignAgreementError(algo_metrics));
+            return Err(RootFindingError::SignAgreementError);
         }
 
         for i in 0..self.iter {
@@ -165,7 +190,7 @@ impl Newton {
             x1: None,
             tol: 1e-8,
             iter: 100,
-            rtol: 0.0,
+            rtol: DEFAULT_RTOL,
         }
     }
 
@@ -206,6 +231,21 @@ impl Newton {
             funcalls: 0,
             iter: 0,
         };
+
+        if self.tol <= 0.0 {
+            algo_metrics
+                .msg
+                .push_str("Value of tol is either negative or zero.");
+            return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+        }
+
+        if self.rtol < DEFAULT_RTOL {
+            algo_metrics
+                .msg
+                .push_str("Value of rtol is either negative or extremely small.");
+            return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+        }
+
         let mut x = self.x0;
 
         match &self.fp {
@@ -278,9 +318,7 @@ impl Newton {
                 match self.x1 {
                     Some(x1) => {
                         if x1 == self.x0 {
-                            return Err(RootFindingError::IdenticalInitialGuessesError(
-                                algo_metrics,
-                            ));
+                            return Err(RootFindingError::IdenticalInitialGuessesError);
                         }
                         p1 = x1;
                     }
@@ -347,5 +385,44 @@ impl Newton {
         }
 
         false
+    }
+}
+
+pub struct Brent {
+    f: fn(f64) -> f64,
+    a: f64,
+    b: f64,
+    tol: f64,
+    rtol: f64,
+    iter: usize,
+}
+
+impl Brent {
+    pub fn initialize(f: fn(f64) -> f64, a: f64, b: f64) -> Self {
+        Self {
+            f,
+            a,
+            b,
+            tol: 1e-8,
+            iter: 100,
+            rtol: DEFAULT_RTOL,
+        }
+    }
+    pub fn tol(mut self, tol: f64) -> Self {
+        self.tol = tol;
+        self
+    }
+    pub fn rtol(mut self, rtol: f64) -> Self {
+        self.rtol = rtol;
+        self
+    }
+
+    pub fn iter(mut self, iter: usize) -> Self {
+        self.iter = iter;
+        self
+    }
+
+    pub fn run() -> f64 {
+        0.0
     }
 }

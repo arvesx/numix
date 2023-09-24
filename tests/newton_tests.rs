@@ -3,6 +3,39 @@ pub mod newton_tests {
     use snt::optimize::root_finding::Newton;
 
     #[test]
+    fn test1() {
+        let result = Newton::initialize(|x| x.exp() + x.ln(), 8.0)
+            .fp(|x| x.exp() + 1.0 / x)
+            .tol(1e-10)
+            .run();
+
+        // Validate result
+        match result {
+            Ok(algo_metrics) => {
+                println!("{}", algo_metrics);
+                assert!(algo_metrics.est_x.abs() - 0.27 < 1e-10);
+            }
+            Err(e) => panic!("Test failed due to error: {}", e),
+        }
+    }
+    #[test]
+    fn test2() {
+        let result = Newton::initialize(|x| x.powi(5) - 2.0 * x.powi(3) + x * x - x - 2.0, 4.0)
+            .fp(|x| 5.0 * x.powi(4) - 6.0 * x * x + 2.0 * x - 1.0)
+            .tol(1e-10)
+            .run();
+
+        // Validate result
+        match result {
+            Ok(algo_metrics) => {
+                println!("{}", algo_metrics);
+                assert!(algo_metrics.est_x.abs() - 1.5279253239 < 1e-10);
+            }
+            Err(e) => panic!("Test failed due to error: {}", e),
+        }
+    }
+
+    #[test]
     fn test_newton_high_precision() {
         // Test case 1: Root near 0 for sin(x)
         let root1 = Newton::initialize(|x| x.sin(), 1.0)
