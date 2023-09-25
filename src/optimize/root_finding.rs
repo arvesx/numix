@@ -1,10 +1,11 @@
 use core::fmt;
 
-static MACH_EPS: f64 = std::f64::EPSILON;
+static MACH_EPS: f64 = f64::EPSILON;
 static DEFAULT_RTOL: f64 = 4.0 * MACH_EPS;
 
-static SUCCESS_MAX_ITER: &str = "Warning! Maximum number of iterations reached.\n";
-static SUCCESS_CONVERGENCE: &str = "Achieved convergence with the specified tolerance.\n";
+static SUCCESS_CONVERGENCE: &str =
+    "The algorithm achieved convergence with the specified tolerance.\n";
+static MAX_ITER: &str = "Variable est_x is the last approximation made by the algorithm.\n";
 
 pub struct AlgoMetrics {
     pub msg: String,
@@ -29,6 +30,7 @@ pub enum RootFindingError {
     ZeroDerivativeError(AlgoMetrics),
     IdenticalInitialGuessesError,
     UnacceptableToleranceError(AlgoMetrics),
+    IterationLimitExceededError(AlgoMetrics),
 }
 
 impl fmt::Display for RootFindingError {
@@ -56,6 +58,9 @@ impl fmt::Display for RootFindingError {
                     "Too small tolerance value was given.\n{}",
                     algo_metrics.msg
                 )
+            }
+            RootFindingError::IterationLimitExceededError(algo_metrics) => {
+                write!(f, "Maximum number of iterations reached.\n{}", algo_metrics)
             }
         }
     }
@@ -97,7 +102,7 @@ impl Bisection {
 
     pub fn run(self) -> Result<AlgoMetrics, RootFindingError> {
         let mut algo_metrics = AlgoMetrics {
-            est_x: 0.0,
+            est_x: f64::NAN,
             msg: String::from(""),
             func_evals: 0,
             iter: 0,
@@ -119,7 +124,7 @@ impl Bisection {
 
         let mut a = self.a;
         let mut b = self.b;
-        let mut m;
+        let mut m = a + (b - a) * 0.5;
 
         let f_a = (self.f)(a);
         algo_metrics.func_evals += 1;
@@ -161,7 +166,9 @@ impl Bisection {
             }
         }
         algo_metrics.iter = self.iter;
-        Err(RootFindingError::NonConvergenceError(algo_metrics))
+        algo_metrics.est_x = m;
+        algo_metrics.msg.push_str(MAX_ITER);
+        Err(RootFindingError::IterationLimitExceededError(algo_metrics))
     }
 
     fn convergence_achieved(&self, a: &f64, b: &f64, m: &f64) -> bool {
@@ -226,7 +233,7 @@ impl Newton {
 
     pub fn run(self) -> Result<AlgoMetrics, RootFindingError> {
         let mut algo_metrics = AlgoMetrics {
-            est_x: 0.0,
+            est_x: f64::NAN,
             msg: String::from(""),
             func_evals: 0,
             iter: 0,
@@ -307,8 +314,8 @@ impl Newton {
                 }
                 algo_metrics.est_x = x;
                 algo_metrics.iter = self.iter;
-                algo_metrics.msg.push_str(SUCCESS_MAX_ITER);
-                Ok(algo_metrics)
+                algo_metrics.msg.push_str(MAX_ITER);
+                Err(RootFindingError::IterationLimitExceededError(algo_metrics))
             }
             // In case f prime is not given, proceed with Secant Method
             None => {
@@ -366,9 +373,9 @@ impl Newton {
                 }
 
                 algo_metrics.est_x = p;
-                algo_metrics.msg.push_str(SUCCESS_MAX_ITER);
+                algo_metrics.msg.push_str(MAX_ITER);
                 algo_metrics.iter = self.iter;
-                Ok(algo_metrics)
+                Err(RootFindingError::IterationLimitExceededError(algo_metrics))
             }
         }
     }
@@ -411,9 +418,9 @@ impl Brent {
         self
     }
 
-    pub fn run(self) -> f64 {
+    pub fn run(self) -> Result<AlgoMetrics, RootFindingError> {
         let mut algo_metrics = AlgoMetrics {
-            est_x: 0.0,
+            est_x: f64::NAN,
             msg: String::from(""),
             func_evals: 0,
             iter: 0,
@@ -423,14 +430,14 @@ impl Brent {
             algo_metrics
                 .msg
                 .push_str("Value of tol is either negative or zero.");
-            // return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+            return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
         }
 
         if self.rtol < DEFAULT_RTOL {
             algo_metrics
                 .msg
                 .push_str("Value of rtol is either negative or extremely small.");
-            // return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+            return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
         }
 
         let mut a = self.a;
@@ -439,6 +446,19 @@ impl Brent {
         algo_metrics.func_evals += 1;
         let mut f_b = (self.f)(b);
         algo_metrics.func_evals += 1;
+
+        if precision_equals(&f_a, &0.0, &self.tol, &self.rtol) {
+            algo_metrics.est_x = a;
+            algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+            return Ok(algo_metrics);
+        }
+
+        if precision_equals(&f_b, &0.0, &self.tol, &self.rtol) {
+            algo_metrics.est_x = b;
+            algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+            return Ok(algo_metrics);
+        }
+
         let mut last_bracket = a;
         let mut f_last_bracket = f_a;
         let mut last_interval_size = b - a;
@@ -450,7 +470,7 @@ impl Brent {
         let mut q;
         let mut r;
 
-        for _i in 0..self.iter {
+        for i in 0..self.iter {
             // If the absolute value of f_last_bracket is less than the absolute value of f_b, swap a, b,
             // and last_bracket as well as their corresponding function values. This ensures that b is
             // always the best approximation
@@ -470,7 +490,10 @@ impl Brent {
             // If the absolute value of the midpoint is less than or equal to the effective tolerance,
             // or if f_b is zero, then a root has been found. Return b.
             if m.abs() <= effective_tol || precision_equals(&f_b, &0.0, &self.tol, &self.rtol) {
-                return b;
+                algo_metrics.est_x = b;
+                algo_metrics.iter = i;
+                algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+                return Ok(algo_metrics);
             }
 
             if prev_interval_size.abs() < effective_tol || f_a.abs() < f_b.abs() {
@@ -531,6 +554,6 @@ impl Brent {
             }
         }
 
-        0.0
+        Err(RootFindingError::IterationLimitExceededError(algo_metrics))
     }
 }
