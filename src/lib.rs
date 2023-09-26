@@ -3,7 +3,8 @@ pub mod optimize {
 }
 
 pub mod interpolate {
-    pub mod polynomial;
+    pub mod interpolator;
+    mod linear_spline;
 }
 pub mod integrate {
     pub mod integrator;
