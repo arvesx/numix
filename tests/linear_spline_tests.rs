@@ -1,22 +1,8 @@
 #[cfg(test)]
 mod linear_spline_tests {
+
     use snt::interpolate::interpolator::linear_spline;
     use snt::interpolate::interpolator::linear_spline_in_place;
-    use std::time::Instant;
-
-    #[test]
-    fn compare_speed() {
-        let start = Instant::now();
-        test_linear_spline_with_artificial_data();
-        let duration = start.elapsed();
-        println!("Time elapsed: {:?}", duration);
-
-        let start = Instant::now();
-        test_linear_spline_with_artificial_data_in_place();
-
-        let duration = start.elapsed();
-        println!("Time elapsed: {:?}", duration);
-    }
 
     #[test]
     fn test_linear_spline() {
@@ -24,7 +10,7 @@ mod linear_spline_tests {
         let data = vec![(1.0, 1.0), (2.0, 4.0), (3.0, 9.0), (4.0, 16.0)];
 
         // Create the spline function
-        let f = linear_spline(&data);
+        let f = linear_spline(&data).unwrap();
 
         // Test points within the range
         assert_eq!(f.eval(1.5).unwrap(), 2.5); // Midway between 1.0 and 4.0
@@ -45,7 +31,7 @@ mod linear_spline_tests {
         let flat_data = vec![(1.0, 2.0), (2.0, 2.0), (3.0, 2.0)];
 
         // Create the spline function for the flat line
-        let f_flat = linear_spline(&flat_data);
+        let f_flat = linear_spline(&flat_data).unwrap();
 
         // Test points within the range
         assert_eq!(f_flat.eval(1.5).unwrap(), 2.0);
@@ -55,7 +41,7 @@ mod linear_spline_tests {
         let desc_data = vec![(1.0, 3.0), (2.0, 2.0), (3.0, 1.0)];
 
         // Create the spline function for the descending line
-        let f_desc = linear_spline(&desc_data);
+        let f_desc = linear_spline(&desc_data).unwrap();
 
         // Test points within the range
         assert_eq!(f_desc.eval(1.5).unwrap(), 2.5);
@@ -72,7 +58,7 @@ mod linear_spline_tests {
         let mut data = vec![(1.0, 1.0), (2.0, 4.0), (3.0, 9.0), (4.0, 16.0)];
 
         // Create the spline function
-        let f = linear_spline_in_place(&mut data);
+        let f = linear_spline_in_place(&mut data).unwrap();
 
         // Test points within the range
         assert_eq!(f.eval(1.5).unwrap(), 2.5); // Midway between 1.0 and 4.0
@@ -93,7 +79,7 @@ mod linear_spline_tests {
         let mut flat_data = vec![(1.0, 2.0), (2.0, 2.0), (3.0, 2.0)];
 
         // Create the spline function for the flat line
-        let f_flat = linear_spline_in_place(&mut flat_data);
+        let f_flat = linear_spline_in_place(&mut flat_data).unwrap();
 
         // Test points within the range
         assert_eq!(f_flat.eval(1.5).unwrap(), 2.0);
@@ -103,7 +89,7 @@ mod linear_spline_tests {
         let mut desc_data = vec![(1.0, 3.0), (2.0, 2.0), (3.0, 1.0)];
 
         // Create the spline function for the descending line
-        let f_desc = linear_spline_in_place(&mut desc_data);
+        let f_desc = linear_spline_in_place(&mut desc_data).unwrap();
 
         // Test points within the range
         assert_eq!(f_desc.eval(1.5).unwrap(), 2.5);
@@ -125,7 +111,7 @@ mod linear_spline_tests {
         }
 
         // Create the spline function
-        let f = linear_spline(&data);
+        let f = linear_spline(&data).unwrap();
 
         // Test a few random points within the range
         let test_points = vec![
@@ -150,7 +136,7 @@ mod linear_spline_tests {
         }
 
         // Create the spline function
-        let f = linear_spline_in_place(&mut data);
+        let f = linear_spline_in_place(&mut data).unwrap();
 
         // Test a few random points within the range
         let test_points = vec![

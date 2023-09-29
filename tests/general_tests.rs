@@ -8,7 +8,7 @@ mod general_tests {
         let x2 = 42.0;
         let tol = 1e-5;
         let rtol = 1e-5;
-        assert!(precision_equals(&x1, &x2, &tol, &rtol));
+        assert!(precision_equals(x1, x2, tol, rtol));
     }
 
     #[test]
@@ -17,7 +17,7 @@ mod general_tests {
         let x2 = 42.0;
         let tol = 1e-5;
         let rtol = 1e-5;
-        assert!(precision_equals(&x1, &x2, &tol, &rtol));
+        assert!(precision_equals(x1, x2, tol, rtol));
     }
 
     #[test]
@@ -26,7 +26,7 @@ mod general_tests {
         let x2 = 42.0;
         let tol = 1e-5;
         let rtol = 1e-5;
-        assert!(!precision_equals(&x1, &x2, &tol, &rtol));
+        assert!(!precision_equals(x1, x2, tol, rtol));
     }
 
     #[test]
@@ -35,7 +35,7 @@ mod general_tests {
         let x2 = 0.0;
         let tol = 1e-5;
         let rtol = 1e-5;
-        assert!(precision_equals(&x1, &x2, &tol, &rtol));
+        assert!(precision_equals(x1, x2, tol, rtol));
     }
 
     #[test]
@@ -44,6 +44,6 @@ mod general_tests {
         let x2 = -42.00001;
         let tol = 1e-5;
         let rtol = 1e-5;
-        assert!(precision_equals(&x1, &x2, &tol, &rtol));
+        assert!(precision_equals(x1, x2, tol, rtol));
     }
 }
