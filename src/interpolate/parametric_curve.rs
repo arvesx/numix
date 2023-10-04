@@ -1,4 +1,7 @@
-use super::{b_spline::BSpline, cubic_bezier::CubicBezierCurve};
+use super::{
+    b_spline::{BSpline, Nurbs},
+    cubic_bezier::CubicBezierCurve,
+};
 
 /// Constructs a new cubic Bezier curve.
 ///
@@ -48,4 +51,20 @@ pub fn bspline(
     p: usize,
 ) -> Result<BSpline, super::error_utils::ParametricCurveError> {
     BSpline::new(ctrl_pts, p)
+}
+
+pub fn nurbs(
+    ctrl_pts: &[(f64, f64)],
+    p: usize,
+) -> Result<Nurbs, super::error_utils::ParametricCurveError> {
+    Nurbs::new(ctrl_pts, p, None, None)
+}
+
+pub fn nurbs_advanced(
+    ctrl_pts: &[(f64, f64)],
+    p: usize,
+    weights: Option<&[f64]>,
+    knot_vector: Option<&[f64]>,
+) -> Result<Nurbs, super::error_utils::ParametricCurveError> {
+    Nurbs::new(ctrl_pts, p, weights, knot_vector)
 }
