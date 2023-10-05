@@ -1,4 +1,4 @@
-use super::{cubic_bezier::CubicBezierCurve, nurbs::Nurbs};
+use super::cubic_bezier::CubicBezierCurve;
 
 /// Constructs a new cubic Bezier curve.
 ///
@@ -16,6 +16,32 @@ pub fn cubic_bezier(
     p3: (f64, f64),
 ) -> CubicBezierCurve {
     CubicBezierCurve::new(p0, p1, p2, p3)
+}
+
+/// Represents a Non-Uniform Rational B-Spline (NURBS) curve.
+///
+/// A NURBS curve is defined by its control points, weights, degree, and a knot vector.
+///
+/// # Fields
+///
+/// * `ctrl_pts: Vec<(f64, f64)>` - The control points that define the shape of the curve.
+///   Each control point is a tuple `(x, y)` where `x` and `y` are the coordinates of the point.
+///
+/// * `weights: Vec<f64>` - The weights associated with each control point.
+///   The weights influence how much the curve is attracted to each control point.
+///   Must have the same length as `ctrl_pts`.
+///
+/// * `p: usize` - The degree of the curve. Determines the smoothness and complexity of the curve.
+///   Must be less than the number of control points.
+///
+/// * `knot_vector: Vec<f64>` - The knot vector that defines the parameterization of the curve.
+///   Must be a non-decreasing sequence and its length must be `ctrl_pts.len() + p + 1`.
+///
+pub struct Nurbs {
+    pub ctrl_pts: Vec<(f64, f64)>,
+    pub(super) weights: Vec<f64>,
+    pub(super) p: usize,
+    pub(super) knot_vector: Vec<f64>,
 }
 
 /// Creates a NURBS curve with the given control points and degree.

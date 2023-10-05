@@ -1,5 +1,5 @@
 use super::error_utils::ParametricCurveError;
-
+use super::parametric_curve::Nurbs;
 /// Constructs a uniform knot vector for a B-spline curve.
 ///
 /// # Arguments
@@ -89,13 +89,6 @@ fn find_knot_span(t: f64, knot_vector: &[f64]) -> Option<usize> {
         .position(|window| t >= window[0] && t < window[1])
 }
 
-pub struct Nurbs {
-    ctrl_pts: Vec<(f64, f64)>,
-    weights: Vec<f64>,
-    p: usize,
-    knot_vector: Vec<f64>,
-}
-
 impl Nurbs {
     /// Constructs a new `Nurbs` curve with the given parameters.
     ///
@@ -169,11 +162,14 @@ impl Nurbs {
                 ));
             }
 
-            // Internal Knot Multiplicity Exceeds Degree: For internal knots (knots that are not at the start or end of the knot vector), the multiplicity (number of times the knot value appears) should not exceed the degree p of the curve.
-            let mut prev_knot = knot_vector[0];
+            // Internal Knot Multiplicity Exceeds Degree: For internal knots (knots that are not at the start or end of the knot vector),
+            // the multiplicity (number of times the knot value appears) should not exceed the degree p of the curve.
+            // Initialize variables to keep track of the current knot value and its multiplicity
+            let mut prev_knot = knot_vector[p]; // Start from the first internal knot
             let mut count = 1;
 
-            for &current_knot in &knot_vector[1..] {
+            // Loop through the internal knots only
+            for &current_knot in &knot_vector[p + 1..knot_vector.len() - p - 1] {
                 if current_knot == prev_knot {
                     count += 1;
                 } else {
@@ -187,7 +183,7 @@ impl Nurbs {
                 }
             }
 
-            // Check the last knot's multiplicity
+            // Check the last internal knot's multiplicity
             if count > p {
                 return Err(ParametricCurveError::NURBSConfiguration(
                     "Internal knot multiplicity exceeds degree.".to_string(),
@@ -359,5 +355,37 @@ impl Nurbs {
                 "Weight index out of bounds.".to_string(),
             ))
         }
+    }
+
+    pub fn set_control_point_at(
+        &mut self,
+        index: usize,
+        new_ctrl_pt: (f64, f64),
+    ) -> Result<(), ParametricCurveError> {
+        self.ctrl_pts[index] = new_ctrl_pt;
+        Ok(())
+    }
+
+    /// Exposes a read-only view of the knot vector.
+    ///
+    /// This method allows you to inspect the knot vector without modifying it.
+    /// It is useful for understanding the internal state of the NURBS curve.
+    ///
+    /// # Returns
+    ///
+    /// * `&[f64]` - A slice containing the knot vector values.
+    ///
+    pub fn get_knot_vector(&self) -> &[f64] {
+        &self.knot_vector
+    }
+
+    /// Exposes a read-only view of the weights vector.
+    ///
+    /// # Returns
+    ///
+    /// * `&[f64]` - A slice containing the weights associated with the control points.
+    ///
+    pub fn get_weights(&self) -> &[f64] {
+        &self.weights
     }
 }
