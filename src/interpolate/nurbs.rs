@@ -89,88 +89,6 @@ fn find_knot_span(t: f64, knot_vector: &[f64]) -> Option<usize> {
         .position(|window| t >= window[0] && t < window[1])
 }
 
-pub struct BSpline {
-    ctrl_pts: Vec<(f64, f64)>,
-    p: usize,
-    knot_vector: Vec<f64>,
-}
-
-impl BSpline {
-    /// Constructs a new instance of a B-spline curve.
-    ///
-    /// # Parameters
-    ///
-    /// - `ctrl_pts: &[(f64, f64)]`: A slice of control points, each represented as a tuple `(x, y)`.
-    ///   These points define the shape of the B-spline curve.
-    /// - `p: usize`: The degree of the B-spline curve. This determines the smoothness and complexity of the curve.
-    ///
-    /// # Returns
-    ///
-    /// - `Result<Self, ParametricCurveError>`: Returns an `Ok` variant containing the newly created B-spline curve
-    ///   if successful. If the function encounters an error, it returns an `Err` variant containing a `ParametricCurveError`.
-    ///
-    /// # Errors
-    ///
-    /// - `ParametricCurveError::InvalidBSplineConfiguration`: This error is returned if the number of control points
-    ///   is insufficient for the given degree `p`.
-    ///
-    /// # Notes
-    ///
-    /// - The function internally clones the provided control points and constructs a uniform knot vector based
-    ///   on the number of control points and the degree `p`.
-    /// - The knot vector is stored as part of the B-spline object for future evaluations of the curve.
-    pub(crate) fn new(ctrl_pts: &[(f64, f64)], p: usize) -> Result<Self, ParametricCurveError> {
-        let ctrl_pts_copy = ctrl_pts.to_vec();
-        let knot_vector = construct_uniform_knot_vector(ctrl_pts_copy.len(), p)?;
-        Ok(Self {
-            ctrl_pts: ctrl_pts_copy,
-            p,
-            knot_vector,
-        })
-    }
-
-    /// Evaluates the B-spline curve at a given parameter `t` using De Boor's Algorithm.
-    ///
-    /// # Parameters
-    /// - `t`: The parameter at which to evaluate the curve. Must be in the range [0, 1].
-    ///
-    /// # Returns
-    /// - `Option<(f64, f64)>`: The point `(x, y)` on the curve corresponding to the parameter `t`.
-    ///   Returns `None` if `t` is out of range or if the knot span cannot be found.
-    ///
-    /// # Algorithm
-    /// 1. Finds the knot span index `i` for the given parameter `t` using the knot vector.
-    /// 2. Extracts the local control points that influence the curve at `t`.
-    /// 3. Applies De Boor's Algorithm to iteratively compute the point on the curve.
-    ///
-    /// # Notes
-    /// - This function assumes that the knot vector and control points are already set.
-    /// - The function uses a uniform knot vector.
-    /// - The function is designed to work with non-rational B-splines.
-    ///
-    /// # Errors
-    /// - Returns `None` if `t` is not in the range [0, 1] or if the knot span cannot be found.
-    pub fn eval(&self, t: f64) -> Option<(f64, f64)> {
-        let i = find_knot_span(t, &self.knot_vector)?;
-
-        let mut local_ctrl_pts = self.ctrl_pts[i - self.p..=i].to_vec();
-
-        // De Boor's Algorithm
-        for r in 1..=self.p {
-            for j in (r..=self.p).rev() {
-                let alpha = (t - self.knot_vector[i + j - self.p])
-                    / (self.knot_vector[i + j + 1 - r] - self.knot_vector[i + j - self.p]);
-                local_ctrl_pts[j].0 =
-                    (1.0 - alpha) * local_ctrl_pts[j - 1].0 + alpha * local_ctrl_pts[j].0;
-                local_ctrl_pts[j].1 =
-                    (1.0 - alpha) * local_ctrl_pts[j - 1].1 + alpha * local_ctrl_pts[j].1;
-            }
-        }
-
-        Some(local_ctrl_pts[self.p])
-    }
-}
-
 pub struct Nurbs {
     ctrl_pts: Vec<(f64, f64)>,
     weights: Vec<f64>,
@@ -179,6 +97,35 @@ pub struct Nurbs {
 }
 
 impl Nurbs {
+    /// Constructs a new `Nurbs` curve with the given parameters.
+    ///
+    /// This constructor performs a series of validations to ensure that the NURBS curve is well-defined. Specifically, it checks the degree, knot vector, and weights to ensure they meet the requirements for a valid NURBS curve.
+    ///
+    /// # Parameters
+    ///
+    /// * `ctrl_pts: &[(f64, f64)]` - A slice of control points, each represented as a tuple `(x, y)`.
+    /// * `p: usize` - The degree of the curve.
+    /// * `weights: Option<&[f64]>` - An optional slice of weights, one for each control point. If not provided, uniform weights of 1.0 are assumed.
+    /// * `knot_vector: Option<&[f64]>` - An optional slice representing the knot vector. If not provided, a uniform knot vector is constructed.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self, ParametricCurveError>` - Returns `Ok(Nurbs)` if the curve is successfully constructed, otherwise returns an `Err` with a `ParametricCurveError` detailing the reason for the failure.
+    ///
+    /// # Validations
+    ///
+    /// 1. **Degree**: The degree `p` must be less than the number of control points `n`.
+    /// 2. **Knot Vector**: If provided, the knot vector must meet the following criteria:
+    ///     - Its length must be `n + p + 1`.
+    ///     - It must be non-decreasing.
+    ///     - The multiplicity of the first and last knots should be `p + 1`.
+    ///     - The multiplicity of internal knots should not exceed `p`.
+    /// 3. **Weights**: If provided, all weights must be non-negative.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `ParametricCurveError` if any of the validations fail.
+    ///
     pub(crate) fn new(
         ctrl_pts: &[(f64, f64)],
         p: usize,
@@ -257,7 +204,7 @@ impl Nurbs {
             }
 
             // Non-Positive Weights: All weights should be positive. If any weight is zero or negative, throw an error.
-            if weights.iter().any(|&x| x < 0.0) {
+            if weights.iter().any(|&x| x <= 0.0) {
                 return Err(ParametricCurveError::NURBSConfiguration(
                     "Negative weight has been encountered. Be sure to have non negative values in weights vector.".to_string(),
                 ));
@@ -278,6 +225,18 @@ impl Nurbs {
         })
     }
 
+    /// Evaluates the NURBS curve at a given parameter `t`.
+    ///
+    /// This method uses De Boor's Algorithm to compute the Cartesian coordinates `(x, y)` of the point on the curve corresponding to the parameter `t`. The algorithm is applied in the homogeneous coordinate space and then converted back to Cartesian coordinates.
+    ///
+    /// # Parameters
+    ///
+    /// * `t: f64` - The parameter at which to evaluate the curve. It should lie within the domain defined by the knot vector.
+    ///
+    /// # Returns
+    ///
+    /// * `Option<(f64, f64)>` - Returns `Some((x, y))` where `(x, y)` are the Cartesian coordinates of the point on the curve at parameter `t`. Returns `None` if `t` is outside the domain of the curve.
+    ///
     pub fn eval(&self, t: f64) -> Option<(f64, f64)> {
         let i = find_knot_span(t, &self.knot_vector)?;
 
@@ -319,6 +278,29 @@ impl Nurbs {
         Some(final_point)
     }
 
+    /// Sets the value of the knot at a specific index in the knot vector.
+    ///
+    /// This method performs validations to ensure that the new knot value maintains the integrity of the NURBS curve. Specifically, it checks for out-of-bounds index, clamping conditions, and non-decreasing order of the knot vector.
+    ///
+    /// # Parameters
+    ///
+    /// * `index: usize` - The index in the knot vector where the new knot value will be set.
+    /// * `value: f64` - The new knot value.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), ParametricCurveError>` - Returns `Ok(())` if the knot value is successfully set. Otherwise, returns an `Err` with a `ParametricCurveError` detailing the reason for the failure.
+    ///
+    /// # Validations
+    ///
+    /// 1. **Out-of-Bounds**: The index must be within the range of the knot vector.
+    /// 2. **Clamping Condition**: The index must not be within the first or last `p + 1` knots, where `p` is the degree of the curve.
+    /// 3. **Non-Decreasing Order**: The new knot value must maintain the non-decreasing order of the knot vector.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `ParametricCurveError` if any of the validations fail.
+    ///
     pub fn set_knot_at(&mut self, index: usize, value: f64) -> Result<(), ParametricCurveError> {
         // Check for out-of-bounds index
         if index >= self.knot_vector.len() {
@@ -340,12 +322,42 @@ impl Nurbs {
         Ok(())
     }
 
-    pub fn set_weight_at(&mut self, index: usize, value: f64) -> Result<(), &'static str> {
+    /// Sets the weight of a control point at a specific index.
+    ///
+    /// This method updates the weight associated with the control point at the given index. It performs validations to ensure that the index is within the bounds of the weights vector and that the weight is a positive value.
+    ///
+    /// # Parameters
+    ///
+    /// * `index: usize` - The index in the weights vector where the new weight will be set.
+    /// * `value: f64` - The new weight value.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), ParametricCurveError>` - Returns `Ok(())` if the weight is successfully set. Otherwise, returns an `Err` with a `ParametricCurveError` detailing the reason for the failure.
+    ///
+    /// # Validations
+    ///
+    /// 1. **Out-of-Bounds**: The index must be within the range of the weights vector.
+    /// 2. **Positive Value**: The weight must be a positive real number.
+    ///
+    /// # Errors
+    ///
+    /// Returns a `ParametricCurveError` if the index is out of bounds or the weight is not a positive value.
+    ///
+    pub fn set_weight_at(&mut self, index: usize, value: f64) -> Result<(), ParametricCurveError> {
         if index < self.weights.len() {
-            self.weights[index] = value;
-            Ok(())
+            if value > 0.0 {
+                self.weights[index] = value;
+                Ok(())
+            } else {
+                Err(ParametricCurveError::NURBSConfiguration(
+                    "Weight value should be a positive value.".to_string(),
+                ))
+            }
         } else {
-            Err("Index out of bounds")
+            Err(ParametricCurveError::NURBSConfiguration(
+                "Weight index out of bounds.".to_string(),
+            ))
         }
     }
 }

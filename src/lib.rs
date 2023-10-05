@@ -3,12 +3,12 @@ pub mod optimize {
 }
 
 pub mod interpolate {
-    mod b_spline;
     mod cubic_bezier;
     mod cubic_spline;
     mod error_utils;
     pub mod interpolator;
     mod linear_spline;
+    mod nurbs;
     pub mod parametric_curve;
     pub mod parametric_interpolator;
 }
