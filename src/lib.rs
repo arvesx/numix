@@ -22,5 +22,17 @@ pub mod interpolate {
 }
 pub mod integrate {
     pub mod integrator;
+    pub mod quad;
 }
 
+pub mod arithmetic {
+    pub mod binomial;
+}
+
+pub mod special {
+    pub mod polynomials;
+}
+
+pub mod common {
+    pub mod functions;
+}

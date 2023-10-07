@@ -1,63 +1,240 @@
+use core::fmt;
 use std::collections::VecDeque;
 
-pub struct CompositeTrapezoid<F>
-{
-    function: F,
-    a: f64,
-    b: f64,
-    
-    size: usize
+static DEFAULT_NODES:usize=10000;
+static DEFAULT_TOL:f64=1e-11;
+
+///Output characteristics for evaluating an one dimensional integral .
+///Consists of an output message , the number of nodes evaluated and the result in f64
+/// ## Attributes
+/// - msg:String
+/// - nodes:usize
+/// - integral:f64
+pub struct IntegralChar{
+    pub msg:String,
+    pub nodes:usize,
+    pub integral:f64
 
 }
+impl fmt::Display for IntegralChar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
-impl<F> CompositeTrapezoid<F>
-where
-    F:Fn(f64)->f64,
-{
-    pub fn initialize(function:F,a:f64,b:f64)-> Self {
+        writeln!(f,"{}\n Nodes={} Result={}\n",
+            self.msg, self.nodes,self.integral
+        )
+    }
+}
+
+/// Possible errors that will occured in the integration process.
+pub enum IntegralError{
+    None,
+    IntervalError,
+    UnacceptableTolearanceError(IntegralChar),
+    IterationLimitExceededError(IntegralChar),
+}
+
+impl fmt::Display for IntegralError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            IntegralError::None=>{
+                write!(f, "The parameters are valid\n")}
+            IntegralError::IntervalError => {
+                write!(f, "The interval is infinite\n")
+            }
+            IntegralError::UnacceptableTolearanceError(integral_char) => {
+                
+                write!(f,"Derivative became zero during computation.\n{}",
+                    integral_char
+                )
+            }
+            IntegralError::IterationLimitExceededError(integral_char) => {
+                write!(f, "Initial guesses x0 and x1 cannot be identical.\n{}",integral_char)
+            }
+        }
+    }
+}
+
+/// # Composite Trapezoid Integration
+/// Structure that handles input parameters and runs the composite trapezoid method
+/// for a number of nodes.
+
+/// ## Methods
+/// - Initialize the struct
+/// - Change the Nodes 
+/// - Run and Compute the integrals
+/// 
+pub struct CompositeTrapezoid{
+    f:fn(f64)->f64,
+    a: f64,
+    b: f64,
+    nodes: usize
+
+}
+impl CompositeTrapezoid{
+
+    ///A method that will initialize the integration struct
+    pub fn initialize(f:fn(f64)->f64,a:f64,b:f64)-> Self {
+        
         Self { 
-    
-            function,
+
+            f,
             a,
             b,
-            size:10000 }
+            nodes:DEFAULT_NODES  
 
+        }
     }
 
-    pub fn steps (mut self, size:usize) -> Self {
+    ///A method that changes the number of nodes that will be evaluated in the interval
+    pub fn nodes (mut self, nodes:usize) -> Self {
 
-        self.size=size;
+        self.nodes=nodes;
         self 
 
     }
 
-    pub fn run (self)->f64 {
+    pub fn run (self)->Result<IntegralChar,IntegralError> {
+        
+
+        let mut integral_char=IntegralChar{
+            
+            msg: String::from(""),
+            nodes: self.nodes,
+            integral:f64::NAN,
+        };
 
 
-        let h = (self.b - self.a) / self.size as f64;
+        if !(self.a.is_finite() || self.b.is_finite()) {
 
-        let mut result = 0.5 * (self.function)(self.a) + (self.function)(self.b);
+            return Err(IntegralError::IntervalError)
+        }
 
-        for i in 1..self.size {
+        let h = (self.b - self.a) / self.nodes as f64;
+
+        if h <=DEFAULT_TOL{
+
+            return Err(IntegralError::IntervalError);
+        }
+
+        let mut result = 0.5 * (self.f)(self.a) + (self.f)(self.b);
+
+        for i in 1..self.nodes {
             let x = self.a + i as f64 * h;
-            result += (self.function)(x);
+            result += (self.f)(x);
         }
 
         result *= h;
-        return  result;
+
+        integral_char.msg="Integration Completed".to_string();
+        integral_char.integral=result;
+
+        return  Ok(integral_char)
     }
    
 
 }
 
+/// # Simpson Rule Integration
+/// Structure that handles input parameters and runs the simpson 1/3 rule 
+/// for a number of nodes.
+
+/// ## Methods
+/// - Initialize the struct
+/// - Change the Nodes 
+/// - Run and Compute the integrals
+///
+pub struct Simpson{
+
+    f:fn(f64)->f64,
+    a: f64,
+    b: f64,
+    nodes: usize
+}
+
+impl Simpson{
+
+    ///A method that will initialize the integration struct
+    pub fn initialize(f:fn(f64)->f64,a:f64,b:f64)-> Self {
+        
+        Self { 
+
+            f,
+            a,
+            b,
+            nodes:DEFAULT_NODES  
+
+        }
+    }
+
+    ///A method that changes the number of nodes that will be evaluated in the interval
+    pub fn nodes (mut self, nodes:usize) -> Self {
+
+        self.nodes=nodes;
+        self 
+
+    }
+
+    /// A method that runs the numerical integration and returns the result.
+    pub fn run (self)->Result<IntegralChar,IntegralError> {
+
+        let mut integral_char=IntegralChar{
+            
+            msg: String::from(""),
+            nodes: self.nodes,
+            integral:f64::NAN,
+        };
+
+
+        if !(self.a.is_finite() || self.b.is_finite()) {
+
+            return Err(IntegralError::IntervalError)
+        }
+
+        let h = (self.b - self.a) / self.nodes as f64;
+
+        if h <=DEFAULT_TOL{
+
+            return Err(IntegralError::IntervalError);
+        }
+
+        let mut result = (self.f)(self.a) + (self.f)(self.b);
+
+        for i in 1..self.nodes {
+            let x = self.a + i as f64 * h;
+            result += if i % 2 == 0 { 2.0 * (self.f)(x) } else { 4.0 * (self.f)(x) };
+        }
+
+        result *= h/ 3.0;
+
+        integral_char.integral=result;
+
+        return  Ok(integral_char)
+    }
+
+
+}
+
+
+
+
+/// # Romberg Integration
+/// Structure that handles input parameters and runs the romberg integration 
+/// for a number of nodes what is a power of two.
+/// The estimated values of the integral are stored in the struct and can be extended
+/// for more precision.
+/// ## Methods
+/// - Initialize the struct
+/// - Extend function that computes the integral
+/// - Run function that returns the integral
+///
 pub struct Romberg<F>{
 
     function:F,
     a:f64,
-    b:f64,
     h:f64,
     r:VecDeque<f64>,
-    size:u32
+    size:u32,
+    error_type:IntegralError
 
 }
 impl<F> Romberg<F>
@@ -65,37 +242,51 @@ impl<F> Romberg<F>
 where
     F:Fn(f64)->f64,
 {
+    ///A method that will initialize the integration struct
     pub fn initialize(function:F,a:f64,b:f64)-> Self {
 
         let mut rcopy:VecDeque<f64>=VecDeque::new();
-        rcopy.push_front( 0.5 * (b-a) *  ((function)(a) + (function)(b)));
 
-        Self{
+        if !(a.is_finite() || b.is_finite()) {
+            rcopy.push_front(0.0);
+            Self{
 
-            function:function,
-            a:a,
-            b:b,
-            h:b-a,
-            r:rcopy,
-            size:1
-
-
+                function:function,
+                a:a,
+                h:b-a,
+                r:rcopy,
+                size:1,
+                error_type:IntegralError::IntervalError
+            } 
         }
-        
-        
-        
-        
+        else{
 
+            //first evalutation
+            rcopy.push_front( 0.5 * (b-a) *  ((function)(a) + (function)(b)));
+
+            Self{
+
+                function:function,
+                a:a,
+                h:b-a,
+                r:rcopy,
+                size:1,
+                error_type:IntegralError::None
+            } 
+            }
     }
-pub fn extend(mut self,size:u32)->Self{
+
+    /// A method that takes as input the struct parameters and a degree that determines how many times the interval points are sub divided. 
+    pub fn extend(mut self,size:u32)->Self{
 
 
-    let mut extentionSize=size+1;
+    let extention_size=size+1;
+    
 
 
-    for n in self.size..self.size+extentionSize{
+    for n in self.size..self.size+extention_size{
 
-        let mut hn: f64 =self.h/(2_i32.pow(n)  as f64);
+        let hn: f64 =self.h/(2_i32.pow(n)  as f64);
         let mut sum =0.0;
         for k in 1..(2_i32.pow(n-1)+1){
             sum += (self.function)(self.a + (2.0 * k as f64 - 1.0) * hn);
@@ -110,244 +301,33 @@ pub fn extend(mut self,size:u32)->Self{
             
         }
     }
-
+    self.size+=extention_size;
     self
-
-
-
     
-}
-
-pub fn run(self)->f64{
-
-     *self.r.back().unwrap()
-   
-    
-}
-}
-
-pub struct GaussQuad<F>{
-
-
-
-    function:F,
-
-    lowerbound:f64,
-    upperbound:f64,
-
-    number_of_nodes:u32,
-    tolerance:f64,
-
-    integral_type:String,
-    singularities:Vec<f64>,
-    integration_method:String,
-
-    terminal_condition:String,
-    exit_condition:String
-
-}
-
-/*
-integral types: bounded non-singular
-                bounded singularites
-                infinite interval non-singular
-                infinite interval singularites
-                fourier transform
-                oscillatory integral
-                none aka trivial solution=0
-*/
-
-/*
-integral methods: Gauss
-
-*/
-
-/*
-terminal conditions: initial tolerance 
-                     numberofnodes
-                     demanded tolerance
-                     
-                     
-                    
-*/
-/*
-exitcondition:  noexit
-                tolerance satisfied
-                numberofnodes exhausted
-                iterations exhausted
-                divergence
-                field error
-                overflow error
-
-*/
-
-impl <F> GaussQuad<F> 
-where
-    F:Fn(f64)->f64
-{
-
-
-
-pub fn initialize(function:F,lowerbound:f64,upperbound:f64)->Self{
-
-    //categorizing integral
-
-    let integral_type:String;
-    let integration_method:String;
-    let singularities:Vec<f64>;
-    let terminal_condition:String="initial_tolerance";
-    
-    
-    if lowerbound==upperbound {
-
-        integral_type="none";
-
-        integration_method="gauss";
-        
-
-   
     }
 
-    singularities=singularites(function, lowerbound, upperbound);
-    if singularities.is_empty() {
+    /// A method that returns the result.
+    pub fn run(self)->Result<IntegralChar,IntegralError>{
+        let mut int_char=IntegralChar{
+            msg:"".to_string(),
+            nodes:self.size.pow(2) as usize,
+            integral:f64::NAN
 
-        if upperbound.is_infinite() || lowerbound.is_infinite() {
+        };
 
-            integral_type="infinite interval";
-
-            integration_method="gauss";
-
-        } else{
-
-            integral_type="bounded";
-            
-            integration_method="gauss";
+        match self.error_type{
+            IntegralError::IntervalError=>{
+                return Err(IntegralError::IntervalError)
+            }
+            _=>{
+                int_char.msg="Completed Integration".to_string();
+                int_char.integral=*self.r.back().unwrap();
+                return Ok(int_char)
+            }
 
         }
+   
     }
-    else{
-
-        if upperbound.is_infinite() || lowerbound.is_infinite() {
-
-            integral_type="infinite interval singularities";
-
-            integration_method="gauss";
-
-        }else{
-
-            integral_type="bounded singularities";
-            
-            integration_method="gauss";
-
-        }
-
-    }
-        
-
-    Self{
-
-        function:function,
-
-        lowerbound:lowerbound,
-        upperbound:upperbound,
-
-        number_of_nodes:100,
-        tolerance:10.0_f64.powf(-6.0),
-
-        integral_type:integral_type,
-        integration_method,
-        singularities:singularities,
-
-        terminal_condition:terminal_condition,
-        exit_condition:"no exit"
-
-
-
-    }
-
-
-    
-
 }
 
-pub fn change_tolerance(mut self, tol:f64)->Self{
-
-    self.tolerance=tol;
-    self.terminal_condition="demanded tolerance";
-    self
-        
-
-
-}
-pub fn oscillatory(mut self)->Self{
-
-
-    self.integral_type="oscilatory";
-    self
-}
-
-
-
-pub fn run(mut self)->f64{
-
-    let mut solution:f64=0.0;
-    self.exit_condition="tolerance satisfied";
-
-    return solution;
-
-
-
-}
-
-pub fn exit_condition(self)->String{
-    
-    self.exit_condition
-
-
-}
-
-}
-
-
-pub fn singularites<F>(function:F,lowerbound:f64,upperbound:f64)->Vec<f64>{
-    if lowerbound>=upperbound {
-
-        panic!("Irrational Bounds");
-    }
-
-    return Vec::new();
-
-
-}
-
-
-
-pub fn laplace_transform<F>(fucntion:F, tolerance:f64)->bool{
-
-    /*
-    norma4
-    bilateral
-     */
-    return true
-
-
-}
-
-pub fn fourier_transform<F>(function:F,transformtype:String, tolerance:f64)->bool{
-
-    /* 
-        normalised sine
-        non-normalised sine
-        normalised cosine
-        non-normalised cosine
-
-        normalised fft
-        non-normalised fft
-     */
-    return true
-
-
-
-
-}
 
