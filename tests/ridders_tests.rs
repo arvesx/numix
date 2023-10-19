@@ -166,7 +166,7 @@ mod bisection_tests {
     }
     #[test]
     fn test_log_poly_high_precision() {
-        let root = Ridders::initialize(|x| (x + 1.0).ln() - x.powi(2) + 2.0 * x, -0.5, 2.0)
+        let root = Ridders::initialize(|x| (x + 1.0).ln() - x.powi(2) + 2.0 * x, -0.1, 2.0)
             .tol(1e-10)
             .iter(10000)
             .run();

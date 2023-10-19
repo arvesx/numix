@@ -420,6 +420,7 @@ impl Ridders {
     }
 
     pub fn run(self) -> Result<AlgoMetrics, RootFindingError> {
+        // Initialize metrics for the algorithm
         let mut algo_metrics = AlgoMetrics {
             est_x: f64::NAN,
             msg: String::from(""),
@@ -427,6 +428,7 @@ impl Ridders {
             iter: 0,
         };
 
+        // Check for acceptable tolerances
         if self.tol <= 0.0 {
             algo_metrics
                 .msg
@@ -443,8 +445,8 @@ impl Ridders {
 
         let mut a = self.a;
         let mut b = self.b;
-        let mut m = a + (b - a) * 0.5;
-        let mut x_prev = f64::INFINITY;
+        let mut m;
+        let mut x_prev = f64::MAX; // To track previous x value
 
         let mut f_a = (self.f)(a);
         algo_metrics.func_evals += 1;
@@ -452,6 +454,7 @@ impl Ridders {
         algo_metrics.func_evals += 1;
         let mut f_m;
 
+        // Check if either boundary is a root
         if f_a == 0.0 {
             algo_metrics.est_x = a;
             algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
@@ -464,20 +467,26 @@ impl Ridders {
             return Ok(algo_metrics);
         }
 
+        // Ensure f(a) and f(b) have different signs
         if f_a.signum() == f_b.signum() {
             return Err(RootFindingError::SignAgreementError);
         }
 
+        // Main iteration loop
         for i in 0..self.iter {
-            m = 0.5 * (a + b);
+            m = 0.5 * (a + b); // Update midpoint
             f_m = (self.f)(m);
             algo_metrics.func_evals += 1;
+
+            // Calculate 's' for Ridders' formula
             let s = f64::sqrt(f_m.powi(2) - f_a * f_b);
             if s == 0.0 {
+                // Denominator became zero, non-convergence
                 algo_metrics.msg.push_str("Cannot apply Ridders' step because denominator became zero during computation.");
                 algo_metrics.iter = i;
                 return Err(RootFindingError::NonConvergenceError(algo_metrics));
             }
+            // Calculate dx and x using Ridders' formula
             let mut dx = (m - a) * f_m / s;
             if (f_a - f_b) < 0.0 {
                 dx = -dx;
@@ -486,6 +495,7 @@ impl Ridders {
             let f_x = (self.f)(x);
             algo_metrics.func_evals += 1;
 
+            // Check for convergence
             if precision_equals(x, x_prev, self.tol, self.rtol) {
                 algo_metrics.iter = i;
                 algo_metrics.est_x = x;
@@ -494,6 +504,7 @@ impl Ridders {
             }
             x_prev = x;
 
+            // Update a, b, f_a, f_b based on the new evaluations
             if f_m.signum() == f_x.signum() {
                 if f_a.signum() == f_x.signum() {
                     a = x;
@@ -510,8 +521,9 @@ impl Ridders {
             }
         }
 
+        // If reached here, max iterations hit without finding a root
         algo_metrics.iter = self.iter;
-        algo_metrics.est_x = m;
+        algo_metrics.est_x = x_prev;
         algo_metrics.msg.push_str(MAX_ITER);
         Err(RootFindingError::IterationLimitExceededError(algo_metrics))
     }
