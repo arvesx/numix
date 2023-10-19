@@ -298,7 +298,7 @@ impl Newton {
                     x_n = x - newton_step;
 
                     // Check for convergence
-                    if precision_equals(&x, &x_n, &self.tol, &self.rtol) {
+                    if precision_equals(x, x_n, self.tol, self.rtol) {
                         algo_metrics.est_x = x;
                         algo_metrics.iter = i;
                         algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
@@ -359,7 +359,7 @@ impl Newton {
                         return Err(RootFindingError::NonConvergenceError(algo_metrics));
                     }
                     // Check for convergence
-                    if precision_equals(&p, &p1, &self.tol, &self.rtol) {
+                    if precision_equals(p, p1, self.tol, self.rtol) {
                         algo_metrics.iter = i;
                         algo_metrics.est_x = p;
                         algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
@@ -381,7 +381,7 @@ impl Newton {
     }
 }
 
-pub fn precision_equals(x1: &f64, x2: &f64, tol: &f64, rtol: &f64) -> bool {
+pub fn precision_equals(x1: f64, x2: f64, tol: f64, rtol: f64) -> bool {
     (x1 - x2).abs() <= tol + rtol * x2.abs()
 }
 pub struct Brent {
@@ -447,13 +447,13 @@ impl Brent {
         let mut f_b = (self.f)(b);
         algo_metrics.func_evals += 1;
 
-        if precision_equals(&f_a, &0.0, &self.tol, &self.rtol) {
+        if precision_equals(f_a, 0.0, self.tol, self.rtol) {
             algo_metrics.est_x = a;
             algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
             return Ok(algo_metrics);
         }
 
-        if precision_equals(&f_b, &0.0, &self.tol, &self.rtol) {
+        if precision_equals(f_b, 0.0, self.tol, self.rtol) {
             algo_metrics.est_x = b;
             algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
             return Ok(algo_metrics);
@@ -489,7 +489,7 @@ impl Brent {
 
             // If the absolute value of the midpoint is less than or equal to the effective tolerance,
             // or if f_b is zero, then a root has been found. Return b.
-            if m.abs() <= effective_tol || precision_equals(&f_b, &0.0, &self.tol, &self.rtol) {
+            if m.abs() <= effective_tol || precision_equals(f_b, 0.0, self.tol, self.rtol) {
                 algo_metrics.est_x = b;
                 algo_metrics.iter = i;
                 algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
