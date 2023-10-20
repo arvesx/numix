@@ -384,6 +384,151 @@ impl Newton {
 pub fn precision_equals(x1: f64, x2: f64, tol: f64, rtol: f64) -> bool {
     (x1 - x2).abs() <= tol + rtol * x2.abs()
 }
+
+pub struct Ridders {
+    f: fn(f64) -> f64,
+    a: f64,
+    b: f64,
+    tol: f64,
+    rtol: f64,
+    iter: usize,
+}
+
+impl Ridders {
+    pub fn initialize(f: fn(f64) -> f64, a: f64, b: f64) -> Self {
+        Self {
+            f,
+            a,
+            b,
+            tol: 1e-8,
+            iter: 100,
+            rtol: DEFAULT_RTOL,
+        }
+    }
+    pub fn tol(mut self, tol: f64) -> Self {
+        self.tol = tol;
+        self
+    }
+    pub fn rtol(mut self, rtol: f64) -> Self {
+        self.rtol = rtol;
+        self
+    }
+
+    pub fn iter(mut self, iter: usize) -> Self {
+        self.iter = iter;
+        self
+    }
+
+    pub fn run(self) -> Result<AlgoMetrics, RootFindingError> {
+        // Initialize metrics for the algorithm
+        let mut algo_metrics = AlgoMetrics {
+            est_x: f64::NAN,
+            msg: String::from(""),
+            func_evals: 0,
+            iter: 0,
+        };
+
+        // Check for acceptable tolerances
+        if self.tol <= 0.0 {
+            algo_metrics
+                .msg
+                .push_str("Value of tol is either negative or zero.");
+            return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+        }
+
+        if self.rtol < DEFAULT_RTOL {
+            algo_metrics
+                .msg
+                .push_str("Value of rtol is either negative or extremely small.");
+            return Err(RootFindingError::UnacceptableToleranceError(algo_metrics));
+        }
+
+        let mut a = self.a;
+        let mut b = self.b;
+        let mut m;
+        let mut x_prev = f64::MAX; // To track previous x value
+
+        let mut f_a = (self.f)(a);
+        algo_metrics.func_evals += 1;
+        let mut f_b = (self.f)(b);
+        algo_metrics.func_evals += 1;
+        let mut f_m;
+
+        // Check if either boundary is a root
+        if f_a == 0.0 {
+            algo_metrics.est_x = a;
+            algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+            return Ok(algo_metrics);
+        }
+
+        if f_b == 0.0 {
+            algo_metrics.est_x = b;
+            algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+            return Ok(algo_metrics);
+        }
+
+        // Ensure f(a) and f(b) have different signs
+        if f_a.signum() == f_b.signum() {
+            return Err(RootFindingError::SignAgreementError);
+        }
+
+        // Main iteration loop
+        for i in 0..self.iter {
+            m = 0.5 * (a + b); // Update midpoint
+            f_m = (self.f)(m);
+            algo_metrics.func_evals += 1;
+
+            // Calculate 's' for Ridders' formula
+            let s = f64::sqrt(f_m.powi(2) - f_a * f_b);
+            if s == 0.0 {
+                // Denominator became zero, non-convergence
+                algo_metrics.msg.push_str("Cannot apply Ridders' step because denominator became zero during computation.");
+                algo_metrics.iter = i;
+                return Err(RootFindingError::NonConvergenceError(algo_metrics));
+            }
+            // Calculate dx and x using Ridders' formula
+            let mut dx = (m - a) * f_m / s;
+            if (f_a - f_b) < 0.0 {
+                dx = -dx;
+            }
+            let x = m + dx;
+            let f_x = (self.f)(x);
+            algo_metrics.func_evals += 1;
+
+            // Check for convergence
+            if precision_equals(x, x_prev, self.tol, self.rtol) {
+                algo_metrics.iter = i;
+                algo_metrics.est_x = x;
+                algo_metrics.msg.push_str(SUCCESS_CONVERGENCE);
+                return Ok(algo_metrics);
+            }
+            x_prev = x;
+
+            // Update a, b, f_a, f_b based on the new evaluations
+            if f_m.signum() == f_x.signum() {
+                if f_a.signum() == f_x.signum() {
+                    a = x;
+                    f_a = f_x;
+                } else {
+                    b = x;
+                    f_b = f_x;
+                }
+            } else {
+                a = m;
+                b = x;
+                f_a = f_m;
+                f_b = f_x;
+            }
+        }
+
+        // If reached here, max iterations hit without finding a root
+        algo_metrics.iter = self.iter;
+        algo_metrics.est_x = x_prev;
+        algo_metrics.msg.push_str(MAX_ITER);
+        Err(RootFindingError::IterationLimitExceededError(algo_metrics))
+    }
+}
+
 pub struct Brent {
     f: fn(f64) -> f64,
     a: f64,
