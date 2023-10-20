@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub mod newton_tests {
-    use snt::optimize::root_finding::Newton;
+    use numix::optimize::root_finding::Newton;
 
     #[test]
     fn test1() {

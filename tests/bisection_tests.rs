@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod bisection_tests {
-    use snt::optimize::root_finding::Ridders;
+    use numix::optimize::root_finding::Ridders;
 
     #[test]
     fn test_quadratic() {

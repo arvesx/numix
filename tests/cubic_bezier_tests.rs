@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod cubic_bezier_tests {
-    use snt::{
+    use numix::{
         interpolate::parametric_curve::cubic_bezier, optimize::root_finding::precision_equals,
     };
 

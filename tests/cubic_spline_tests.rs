@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod cubic_spline_tests {
-    use snt::{interpolate::interpolator::cubic_spline, optimize::root_finding::precision_equals};
+    use numix::{
+        interpolate::interpolator::cubic_spline, optimize::root_finding::precision_equals,
+    };
 
     #[test]
     fn test_cubic_spline() {

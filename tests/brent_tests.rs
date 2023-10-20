@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod brent_tests {
-    use snt::optimize::root_finding::Brent;
+    use numix::optimize::root_finding::Brent;
 
     #[test]
     fn test1() {
@@ -28,8 +28,8 @@ mod brent_tests {
     #[test]
     fn test2() {
         let root1: Result<
-            snt::optimize::root_finding::AlgoMetrics,
-            snt::optimize::root_finding::RootFindingError,
+            numix::optimize::root_finding::AlgoMetrics,
+            numix::optimize::root_finding::RootFindingError,
         > = Brent::initialize(|x| x * x - 4.0, -3.0, -1.0)
             .tol(1e-10)
             .iter(10000)

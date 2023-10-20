@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod general_tests {
-    use snt::optimize::root_finding::precision_equals;
+    use numix::optimize::root_finding::precision_equals;
 
     #[test]
     fn test_exact_equals() {

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod nurbs_tests {
-    use snt::interpolate::parametric_curve::Nurbs;
-    use snt::interpolate::parametric_curve::{nurbs_curve, nurbs_curve_advanced};
+    use numix::interpolate::parametric_curve::Nurbs;
+    use numix::interpolate::parametric_curve::{nurbs_curve, nurbs_curve_advanced};
 
     /// Endpoint Testing: This test verifies that the curve starts and ends at the correct control points.
     #[test]

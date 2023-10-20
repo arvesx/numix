@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod linear_spline_tests {
 
-    use snt::interpolate::interpolator::linear_spline;
-    use snt::interpolate::interpolator::linear_spline_in_place;
+    use numix::interpolate::interpolator::linear_spline;
+    use numix::interpolate::interpolator::linear_spline_in_place;
 
     #[test]
     fn test_linear_spline() {
