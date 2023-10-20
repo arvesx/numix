@@ -1,25 +1,18 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
-
 pub mod optimize {
     pub mod root_finding;
 }
 
 pub mod interpolate {
-    pub mod polynomial;
+    mod cubic_bezier;
+    mod cubic_spline;
+    mod error_utils;
+    pub mod interpolator;
+    mod linear_spline;
+    mod nurbs;
+    pub mod parametric_curve;
+    pub mod parametric_interpolator;
 }
+
 pub mod integrate {
     pub mod integrator;
     pub mod quad;
